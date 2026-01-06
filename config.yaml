@@ -1,0 +1,75 @@
+# BraiinsDeck Widget Server Configuration
+
+server:
+  port: 3000
+  host: 0.0.0.0
+  # Optional authentication token (use environment variable)
+  # authToken: "${WIDGET_TOKEN}"
+
+defaults:
+  locale: cs-CZ
+  tz: Europe/Prague
+  theme: dark
+  size: m # Default size (s, m, l, fs)
+
+widgets:
+  # Tier 1: Built-in Widgets
+
+  - id: clock_main
+    type: clock
+    config:
+      format: 24h
+      showSeconds: true
+      showDate: true
+
+  - id: clock_simple
+    type: clock
+    config:
+      format: 12h
+      showSeconds: false
+      showDate: false
+
+  - id: weather_zdar
+    type: weather
+    config:
+      city: Žďár nad Sázavou
+      country: CZ
+      apiKey: "${OPENWEATHER_API_KEY}" # Optional - uses mock data if not set
+      units: metric
+
+  - id: weather_ny
+    type: weather
+    config:
+      city: New York
+      country: US
+      apiKey: "${OPENWEATHER_API_KEY}" # Optional - uses mock data if not set
+      units: imperial
+
+  - id: btc_price
+    type: crypto-ticker
+    config:
+      coin: BTC
+      fiat: USD
+      showVolume: true
+
+  - id: eth_price
+    type: crypto-ticker
+    config:
+      coin: ETH
+      fiat: EUR
+      showVolume: false
+
+  # Tier 2: Custom widgets (uncomment to use)
+  #
+  # - id: my_custom_widget
+  #   file: ./widgets/my-widget.tsx
+  #   config:
+  #     title: "Custom Widget"
+  #     value: 42
+
+  # Tier 3: NPM plugins (uncomment to use)
+  #
+  # - id: advanced_widget
+  #   plugin: "@someone/braiins-widget-xyz"
+  #   config:
+  #     option: value
