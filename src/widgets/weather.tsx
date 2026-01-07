@@ -39,7 +39,7 @@ function getContainerStyle(size: DeckSize, theme: string): CSSProperties {
     alignItems: "center",
     width: "100%",
     height: "100%",
-    background: theme === "dark" ? "#1a1a1a" : "#ffffff",
+    background: theme === "dark" ? "#000000" : "#eeeeee",
     color: theme === "dark" ? "#ffffff" : "#0a0a0a",
     fontFamily: "Inter, sans-serif",
     boxSizing: "border-box",
