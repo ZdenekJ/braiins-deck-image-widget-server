@@ -16,14 +16,45 @@ function toFileURL(path: string): string {
 // Registry of loaded widgets
 const widgetRegistry = new Map<string, { widget: Widget; config: any }>();
 
-// Built-in widget type mapping
-const BUILT_IN_WIDGETS: Record<string, string> = {
-  clock: "./widgets/clock.js",
-  weather: "./widgets/weather.js",
-  "crypto-ticker": "./widgets/crypto-ticker.js",
-};
+// Registry of available built-in widget types (auto-discovered)
+const builtInWidgetTypes = new Set<string>();
 
-// Load a single widget
+// Auto-discover built-in widgets from widgets/ directory
+async function loadBuiltInWidgets(): Promise<void> {
+  // Simple relative path - works in both dev (src/widgets) and production (dist/widgets)
+  const builtInWidgetsDir = join(__dirname, "widgets");
+
+  if (!existsSync(builtInWidgetsDir)) {
+    console.log("No built-in widgets directory found");
+    return;
+  }
+
+  try {
+    console.log(`Scanning for built-in widgets in: ${builtInWidgetsDir}`);
+    const files = await readdir(builtInWidgetsDir);
+    // Accept both .tsx (dev with tsx) and .js (production compiled)
+    const widgetFiles = files.filter((f) => f.endsWith(".tsx") || f.endsWith(".js"));
+
+    console.log(
+      `Discovered ${widgetFiles.length} built-in widget type(s): ${widgetFiles.map((f) => f.replace(/\.(tsx|js)$/, "")).join(", ")}`
+    );
+
+    for (const file of widgetFiles) {
+      const widgetType = file.replace(/\.(tsx|js)$/, "");
+      builtInWidgetTypes.add(widgetType);
+    }
+  } catch (error) {
+    console.error("Failed to discover built-in widgets:", error);
+  }
+}
+
+// Get the built-in widgets directory path
+function getBuiltInWidgetsPath(): string {
+  // Simple relative path - works in both dev and production
+  return join(__dirname, "widgets");
+}
+
+// Load a single widget from config
 async function loadWidget(
   widgetConfig: WidgetConfig
 ): Promise<{ widget: Widget; config: any }> {
@@ -32,9 +63,14 @@ async function loadWidget(
   try {
     let widgetModule: any;
 
-    // Tier 1: Built-in widgets
-    if (type && BUILT_IN_WIDGETS[type]) {
-      const modulePath = join(__dirname, BUILT_IN_WIDGETS[type]);
+    // Tier 1: Built-in widgets (by type)
+    if (type && builtInWidgetTypes.has(type)) {
+      const builtInPath = getBuiltInWidgetsPath();
+      // Try .tsx first (dev mode), fallback to .js (production)
+      let modulePath = join(builtInPath, `${type}.tsx`);
+      if (!existsSync(modulePath)) {
+        modulePath = join(builtInPath, `${type}.js`);
+      }
       const moduleURL = toFileURL(modulePath);
       widgetModule = await import(moduleURL);
     }
@@ -127,9 +163,11 @@ async function loadCustomWidgets(): Promise<void> {
 export async function initializeWidgets(
   widgetConfigs: WidgetConfig[]
 ): Promise<void> {
-  console.log(`Loading ${widgetConfigs.length} widgets from config...`);
+  // Step 1: Auto-discover built-in widget types
+  await loadBuiltInWidgets();
 
-  // Load configured widgets
+  // Step 2: Load configured widgets
+  console.log(`Loading ${widgetConfigs.length} widgets from config...`);
   for (const widgetConfig of widgetConfigs) {
     try {
       const loaded = await loadWidget(widgetConfig);
@@ -139,7 +177,7 @@ export async function initializeWidgets(
     }
   }
 
-  // Auto-discover custom widgets
+  // Step 3: Auto-discover custom widgets (won't override built-in)
   await loadCustomWidgets();
 
   console.log(`✓ Total widgets loaded: ${widgetRegistry.size}`);

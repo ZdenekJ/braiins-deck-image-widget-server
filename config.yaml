@@ -29,6 +29,11 @@ widgets:
       showSeconds: false
       showDate: false
 
+  - id: fuzzy_clock
+    type: fuzzy-clock
+    config:
+    #  showDigital: true # Optional - show digital time below fuzzy text
+
   - id: weather_zdar
     type: weather
     config:
