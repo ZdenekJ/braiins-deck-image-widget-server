@@ -6,6 +6,11 @@ server:
   # Optional authentication token (use environment variable)
   # authToken: "${WIDGET_TOKEN}"
 
+  # Font settings
+  font:
+    family: Inter # Font family name used in CSS
+    file: fonts/Inter-Regular.ttf # Path to font file (relative to project root)
+
 defaults:
   locale: cs-CZ
   tz: Europe/Prague

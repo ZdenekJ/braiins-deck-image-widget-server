@@ -4,6 +4,7 @@ import { loadConfig } from "./config.js";
 import { initializeWidgets } from "./loader.js";
 import { RenderService } from "./services/render.service.js";
 import { WidgetController } from "./controllers/widget.controller.js";
+import { setFontConfig } from "./renderer.js";
 
 const app = Fastify({ logger: true });
 
@@ -16,6 +17,12 @@ try {
 } catch (error) {
   console.error("Failed to load configuration:", error);
   process.exit(1);
+}
+
+// Configure font renderer
+if (config.server.font) {
+  setFontConfig(config.server.font);
+  console.log(`Font configured: ${config.server.font.family} (${config.server.font.file})`);
 }
 
 // Initialize logic

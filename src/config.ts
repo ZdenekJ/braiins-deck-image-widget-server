@@ -6,10 +6,16 @@ import { dirname, join } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+export interface FontConfig {
+  family: string; // Font family name (e.g., "Inter")
+  file: string; // Path to font file relative to project root
+}
+
 export interface ServerConfig {
   port: number;
   host: string;
   authToken?: string;
+  font?: FontConfig; // Optional font configuration
 }
 
 export interface DefaultsConfig {
@@ -78,6 +84,15 @@ export function loadConfig(configPath?: string): Config {
         port: expanded.server.port || 3000,
         host: expanded.server.host || "0.0.0.0",
         authToken: expanded.server.authToken,
+        font: expanded.server.font
+          ? {
+              family: expanded.server.font.family || "Inter",
+              file: expanded.server.font.file || "fonts/Inter-Regular.ttf",
+            }
+          : {
+              family: "Inter",
+              file: "fonts/Inter-Regular.ttf",
+            },
       },
       defaults: {
         locale: expanded.defaults.locale || "cs-CZ",

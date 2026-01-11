@@ -1,60 +1,56 @@
-# Fonts Directory
+# Font Configuration
 
-**DŮLEŽITÉ:** Aplikace vyžaduje font Inter pro správné fungování.
+This directory stores font files used for rendering widgets.
 
-## Jak stáhnout Inter font
+## Default Font (Inter)
 
-### Možnost 1: Přes Google Fonts (doporučeno)
+By default, the server uses **Inter** font. Download it and place it here:
 
-1. Jdi na https://fonts.google.com/specimen/Inter
-2. Klikni na "Download family" (vpravo nahoře)
-3. Rozbal stažený ZIP soubor
-4. Najdi soubor `Inter-Regular.ttf` (ve složce `static/`)
-5. Zkopíruj ho do této složky (`./fonts/`)
+### Quick Download
 
-### Možnost 2: Přes oficiální GitHub
-
-1. Jdi na https://github.com/rsms/inter/releases
-2. Stáhni nejnovější verzi (např. `Inter-X.X.zip`)
-3. Rozbal ZIP
-4. Najdi `Inter-Regular.ttf`
-5. Zkopíruj ho do této složky (`./fonts/`)
-
-### Možnost 3: Přímý download
-
-Stáhni přímo odsud:
+**Option 1:** Direct download
 ```
 https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.ttf
 ```
 
-A ulož jako `./fonts/Inter-Regular.ttf`
+**Option 2:** Google Fonts
+1. Visit https://fonts.google.com/specimen/Inter
+2. Download family → extract → copy `Inter-Regular.ttf` to this folder
 
-## Požadovaná struktura
+**Option 3:** Official GitHub
+1. Visit https://github.com/rsms/inter/releases
+2. Download latest → extract → copy `Inter-Regular.ttf` to this folder
 
-Po stažení by měla být struktura:
+## Using a Custom Font
 
+1. Place your font file (`.ttf` or `.otf`) in this directory
+2. Edit `config.yaml`:
+
+```yaml
+server:
+  font:
+    family: "YourFontName"  # Font family name
+    file: fonts/YourFont.ttf  # Path relative to project root
 ```
-fonts/
-├── README.md           (tento soubor)
-└── Inter-Regular.ttf   (stažený font)
-```
 
-##Ověření
+3. Restart the server
 
-Po umístění fontu restartuj server:
+## Verification
+
+After placing the font, restart the server:
 
 ```bash
 npm run dev
 ```
 
-Měl bys vidět zprávu:
+You should see:
 ```
-✓ Font loaded successfully from D:\...\fonts\Inter-Regular.ttf
+✓ Font 'Inter' loaded from D:\...\fonts\Inter-Regular.ttf
 ```
 
-## Poznámky
+## Notes
 
-- **Inter** je volně dostupný open-source font (SIL Open Font License)
-- Má vynikající čitelnost na malých velikostech
-- Je optimalizovaný pro displeje
-- Podporuje Unicode a emoji
+- Font path is always relative to project root (works in both dev/src and production/dist)
+- Satori supports `.ttf` and `.otf` font formats
+- Only regular weight (400) is currently used
+- Inter is open-source (SIL Open Font License)

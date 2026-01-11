@@ -1,6 +1,7 @@
 import satori from "satori";
 import sharp from "sharp";
 import type { ReactElement } from "./types.js";
+import type { FontConfig } from "./config.js";
 import parse from "html-react-parser";
 import { readFile } from "fs/promises";
 import { join } from "path";
@@ -18,26 +19,42 @@ export interface RenderOptions {
 
 // Font cache
 let fontDataCache: ArrayBuffer | null = null;
+let currentFontConfig: FontConfig = {
+  family: "Inter",
+  file: "fonts/Inter-Regular.ttf",
+};
 
-// Load font data from local file
+/**
+ * Set font configuration (should be called once at server startup)
+ */
+export function setFontConfig(config: FontConfig): void {
+  currentFontConfig = config;
+  // Clear cache to force reload with new config
+  fontDataCache = null;
+}
+
+/**
+ * Load font data from configured path
+ */
 async function loadFont(): Promise<ArrayBuffer> {
   if (fontDataCache) {
     return fontDataCache;
   }
 
   try {
-    const fontPath = join(__dirname, "..", "fonts", "Inter-Regular.ttf");
+    // Path is relative to project root (parent of src/ or dist/)
+    const fontPath = join(__dirname, "..", currentFontConfig.file);
     const fontBuffer = await readFile(fontPath);
     fontDataCache = fontBuffer.buffer.slice(
       fontBuffer.byteOffset,
       fontBuffer.byteOffset + fontBuffer.byteLength
     );
-    console.log("✓ Font loaded successfully from", fontPath);
+    console.log(`✓ Font '${currentFontConfig.family}' loaded from ${fontPath}`);
     return fontDataCache;
   } catch (error) {
     console.error("Failed to load font:", error);
     throw new Error(
-      "Font file not found. Please download Inter font and place Inter-Regular.ttf in the ./fonts/ directory. See fonts/README.md for instructions."
+      `Font file not found at '${currentFontConfig.file}'. Please check your font configuration in config.yaml. See fonts/README.md for instructions.`
     );
   }
 }
@@ -77,7 +94,7 @@ export async function renderToImage(
       height,
       fonts: [
         {
-          name: "Inter",
+          name: currentFontConfig.family,
           data: fontData,
           weight: 400,
           style: "normal",
