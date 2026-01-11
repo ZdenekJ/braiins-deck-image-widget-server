@@ -1,4 +1,6 @@
 import type { Widget, WidgetProps, DeckSize } from "../types.js";
+import { getDeckSize } from "../types.js";
+import { getThemeColors } from "../styles/common.js";
 
 interface DateConfig {
   weekday?: "short" | "long"; // If not set, don't show weekday
@@ -71,30 +73,32 @@ function getWeekdayText(
 // STYLE FUNCTIONS - Pixel-perfect styles for each size
 // ============================================================================
 
-function getContainerStyle(size: DeckSize, theme: string): CSSProperties {
-  const base = {
+function getContainerStyle(theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
+  return {
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
     height: "100%",
-    background: theme === "dark" ? "#000000" : "#eeeeee",
-    color: theme === "dark" ? "#ffffff" : "#0a0a0a",
+    background: colors.bg,
+    color: colors.text,
     fontFamily: "Inter, sans-serif",
     boxSizing: "border-box",
     padding: "20px",
   };
-
-  return base;
 }
 
 function getWeekdayStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "400",
     textAlign: "center",
     textTransform: "capitalize",
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
     marginBottom: "8px",
   };
 
@@ -126,11 +130,13 @@ function getDateStyle(size: DeckSize): CSSProperties {
 }
 
 function getWeekNumberStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "400",
     textAlign: "center",
     marginTop: "12px",
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -141,35 +147,6 @@ function getWeekNumberStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   return { ...base, ...sizeStyles[size] };
-}
-
-// Helper: Determine size from dimensions
-function getDeckSize(width: number, height: number): DeckSize {
-  if (width === 317 && height === 238) return "s";
-  if (width === 638 && height === 238) return "m";
-  if (width === 638 && height === 480) return "l";
-  if (width === 1280 && height === 480) return "fs";
-
-  // Fallback: find closest match
-  const sizes = [
-    { size: "s" as DeckSize, w: 317, h: 238 },
-    { size: "m" as DeckSize, w: 638, h: 238 },
-    { size: "l" as DeckSize, w: 638, h: 480 },
-    { size: "fs" as DeckSize, w: 1280, h: 480 },
-  ];
-
-  let closest = sizes[0];
-  let minDiff = Math.abs(width - closest.w) + Math.abs(height - closest.h);
-
-  for (const s of sizes) {
-    const diff = Math.abs(width - s.w) + Math.abs(height - s.h);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = s;
-    }
-  }
-
-  return closest.size;
 }
 
 // ============================================================================
@@ -194,7 +171,7 @@ async function DateWidget(props: WidgetProps<DateConfig>) {
     : null;
 
   // Get styles for this size
-  const containerStyle = getContainerStyle(size, theme);
+  const containerStyle = getContainerStyle(theme);
   const weekdayStyle = getWeekdayStyle(size, theme);
   const dateStyle = getDateStyle(size);
   const weekNumberStyle = getWeekNumberStyle(size, theme);

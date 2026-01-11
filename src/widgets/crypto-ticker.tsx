@@ -1,4 +1,6 @@
 import type { Widget, WidgetProps, DeckSize } from "../types.js";
+import { getDeckSize } from "../types.js";
+import { getThemeColors } from "../styles/common.js";
 
 interface CryptoConfig {
   coin: string; // BTC, ETH, etc.
@@ -24,28 +26,30 @@ interface CryptoData {
 // ============================================================================
 
 function getContainerStyle(theme: string): CSSProperties {
-  const base = {
+  const colors = getThemeColors(theme as "dark" | "light");
+
+  return {
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
     width: "100%",
     height: "100%",
-    background: theme === "dark" ? "#000000" : "#eeeeee",
-    color: theme === "dark" ? "#ffffff" : "#0a0a0a",
+    background: colors.bg,
+    color: colors.text,
     fontFamily: "Inter, sans-serif",
     boxSizing: "border-box",
     padding: "20px",
     gap: "8px",
   };
-
-  return base;
 }
 
 function getSymbolStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "700",
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -106,9 +110,11 @@ function getChangeItemStyle(): CSSProperties {
 }
 
 function getChangeLabelStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "400",
-    color: theme === "dark" ? "#666666" : "#999999",
+    color: colors.muted,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -126,15 +132,11 @@ function getChangeValueStyle(
   theme: string,
   isPositive: boolean
 ): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "600",
-    color: isPositive
-      ? theme === "dark"
-        ? "#22c55e"
-        : "#16a34a"
-      : theme === "dark"
-      ? "#ef4444"
-      : "#dc2626",
+    color: isPositive ? colors.positive : colors.negative,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -148,9 +150,11 @@ function getChangeValueStyle(
 }
 
 function getVolumeStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "400",
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
     marginTop: "4px",
   };
 
@@ -165,9 +169,11 @@ function getVolumeStyle(size: DeckSize, theme: string): CSSProperties {
 }
 
 function getLastUpdatedStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "400",
-    color: theme === "dark" ? "#666666" : "#999999",
+    color: colors.muted,
     marginTop: "4px",
   };
 
@@ -179,35 +185,6 @@ function getLastUpdatedStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   return { ...base, ...sizeStyles[size] };
-}
-
-// Helper: Determine size from dimensions
-function getDeckSize(width: number, height: number): DeckSize {
-  if (width === 317 && height === 238) return "s";
-  if (width === 638 && height === 238) return "m";
-  if (width === 638 && height === 480) return "l";
-  if (width === 1280 && height === 480) return "fs";
-
-  // Fallback: find closest match
-  const sizes = [
-    { size: "s" as DeckSize, w: 317, h: 238 },
-    { size: "m" as DeckSize, w: 638, h: 238 },
-    { size: "l" as DeckSize, w: 638, h: 480 },
-    { size: "fs" as DeckSize, w: 1280, h: 480 },
-  ];
-
-  let closest = sizes[0];
-  let minDiff = Math.abs(width - closest.w) + Math.abs(height - closest.h);
-
-  for (const s of sizes) {
-    const diff = Math.abs(width - s.w) + Math.abs(height - s.h);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = s;
-    }
-  }
-
-  return closest.size;
 }
 
 // ============================================================================

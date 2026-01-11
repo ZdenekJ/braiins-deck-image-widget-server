@@ -1,4 +1,6 @@
 import type { Widget, WidgetProps, DeckSize } from "../types.js";
+import { getDeckSize } from "../types.js";
+import { getThemeColors } from "../styles/common.js";
 
 interface HomeAssistantConfig {
   title?: string; // Optional title shown above all entities
@@ -29,8 +31,10 @@ const HA_LOGO_SVG = `data:image/svg+xml;base64,${Buffer.from(
 // STYLE FUNCTIONS - Pixel-perfect styles for each size
 // ============================================================================
 
-function getContainerStyle(size: DeckSize, theme: string): CSSProperties {
-  const base = {
+function getContainerStyle(theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
+  return {
     position: "relative",
     display: "flex",
     flexDirection: "column",
@@ -38,15 +42,13 @@ function getContainerStyle(size: DeckSize, theme: string): CSSProperties {
     alignItems: "center",
     width: "100%",
     height: "100%",
-    background: theme === "dark" ? "#000000" : "#eeeeee",
-    color: theme === "dark" ? "#ffffff" : "#0a0a0a",
+    background: colors.bg,
+    color: colors.text,
     fontFamily: "Inter, sans-serif",
     boxSizing: "border-box",
     padding: "20px",
     gap: "12px",
   };
-
-  return base;
 }
 
 function getLogoBadgeStyle(size: DeckSize): CSSProperties {
@@ -85,9 +87,11 @@ function getLogoIconStyle(size: DeckSize): CSSProperties {
 }
 
 function getLogoTextStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "500",
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -137,9 +141,11 @@ function getEntityRowStyle(size: DeckSize): CSSProperties {
 }
 
 function getEntityNameStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "400",
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -168,9 +174,11 @@ function getEntityValueStyle(size: DeckSize): CSSProperties {
 }
 
 function getErrorStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     fontWeight: "400",
-    color: theme === "dark" ? "#ff6b6b" : "#c92a2a",
+    color: colors.error,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -181,35 +189,6 @@ function getErrorStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   return { ...base, ...sizeStyles[size] };
-}
-
-// Helper: Determine size from dimensions
-function getDeckSize(width: number, height: number): DeckSize {
-  if (width === 317 && height === 238) return "s";
-  if (width === 638 && height === 238) return "m";
-  if (width === 638 && height === 480) return "l";
-  if (width === 1280 && height === 480) return "fs";
-
-  // Fallback: find closest match
-  const sizes = [
-    { size: "s" as DeckSize, w: 317, h: 238 },
-    { size: "m" as DeckSize, w: 638, h: 238 },
-    { size: "l" as DeckSize, w: 638, h: 480 },
-    { size: "fs" as DeckSize, w: 1280, h: 480 },
-  ];
-
-  let closest = sizes[0];
-  let minDiff = Math.abs(width - closest.w) + Math.abs(height - closest.h);
-
-  for (const s of sizes) {
-    const diff = Math.abs(width - s.w) + Math.abs(height - s.h);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = s;
-    }
-  }
-
-  return closest.size;
 }
 
 // ============================================================================
@@ -288,7 +267,7 @@ async function HomeAssistantWidget(props: WidgetProps<HomeAssistantConfig>) {
   const entityStates = await fetchAllEntities(entities, host, token);
 
   // Get styles for this size
-  const containerStyle = getContainerStyle(size, theme);
+  const containerStyle = getContainerStyle(theme);
   const logoBadgeStyle = getLogoBadgeStyle(size);
   const logoIconStyle = getLogoIconStyle(size);
   const logoTextStyle = getLogoTextStyle(size, theme);

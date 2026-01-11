@@ -99,7 +99,7 @@ GET /widget/:widgetId.:format?size=m&theme=dark
 
 **Ukázkové URL:**
 
-http://localhost:3000/widget/clock_main.png?size=l
+http://localhost:3000/widget/fuzzy_clock.png?size=l
 http://localhost:3000/widget/weather_prague.png?size=m&theme=light
 http://localhost:3000/widget/btc_price.jpg?size=s
 http://localhost:3000/widget/my_custom.png?size=fs&refresh=1
@@ -120,11 +120,8 @@ defaults:
 
 widgets:
   # Tier 1: Built-in
-  - id: clock_main
-    type: clock
-    config:
-      format: 24h
-      showSeconds: true
+  - id: clock
+    type: fuzzy-clock
 
   # Tier 2: Custom TSX
   - id: my_widget
@@ -141,11 +138,11 @@ widgets:
 
 ## BUILT-IN WIDGETY (3 základní)
 
-### 1. Clock
+### 1. Fuzzy Clock
 
-- Digitální hodiny s datem
-- Konfigurace: format (12h/24h), showSeconds, showDate
-- Cache TTL: 1 sekunda
+- Textove hodiny
+- Konfigurace: možnost zobrazit digitální čas
+- Cache TTL: 60 sekund
 - Responsive: velikost fontu podle size parametru
 
 ### 2. Weather

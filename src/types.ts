@@ -115,6 +115,30 @@ function findClosestSize(width: number, height: number): DeckSize {
   return closestSize;
 }
 
+/**
+ * Determine DeckSize from dimensions
+ * Used by widgets to map width/height to size category
+ *
+ * @param width - Widget width in pixels
+ * @param height - Widget height in pixels
+ * @returns DeckSize (s, m, l, or fs)
+ *
+ * @example
+ * getDeckSize(317, 238) // returns "s"
+ * getDeckSize(638, 238) // returns "m"
+ * getDeckSize(640, 240) // returns "m" (closest match)
+ */
+export function getDeckSize(width: number, height: number): DeckSize {
+  // Exact matches
+  if (width === 317 && height === 238) return "s";
+  if (width === 638 && height === 238) return "m";
+  if (width === 638 && height === 480) return "l";
+  if (width === 1280 && height === 480) return "fs";
+
+  // Fallback: find closest match
+  return findClosestSize(width, height);
+}
+
 // JSX helper functions for widgets
 export function h(type: any, props: any, ...children: any[]): ReactElement {
   return {

@@ -1,4 +1,6 @@
 import type { Widget, WidgetProps, DeckSize } from "../types.js";
+import { getDeckSize } from "../types.js";
+import { getThemeColors } from "../styles/common.js";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { fileURLToPath } from "url";
@@ -32,6 +34,8 @@ interface WeatherData {
 // ============================================================================
 
 function getContainerStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     display: "flex",
     flexDirection: "row",
@@ -39,8 +43,8 @@ function getContainerStyle(size: DeckSize, theme: string): CSSProperties {
     alignItems: "center",
     width: "100%",
     height: "100%",
-    background: theme === "dark" ? "#000000" : "#eeeeee",
-    color: theme === "dark" ? "#ffffff" : "#0a0a0a",
+    background: colors.bg,
+    color: colors.text,
     fontFamily: "Inter, sans-serif",
     boxSizing: "border-box",
   };
@@ -159,9 +163,11 @@ function getCityStyle(size: DeckSize): CSSProperties {
 }
 
 function getConditionStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
     textTransform: "capitalize",
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -175,8 +181,10 @@ function getConditionStyle(size: DeckSize, theme: string): CSSProperties {
 }
 
 function getDetailStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
   const base = {
-    color: theme === "dark" ? "#888888" : "#666666",
+    color: colors.subtext,
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -187,37 +195,6 @@ function getDetailStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   return { ...base, ...sizeStyles[size] };
-}
-
-// Note: No need for styleToString - we'll use CSS objects directly in JSX
-
-// Helper: Determine size from dimensions
-function getDeckSize(width: number, height: number): DeckSize {
-  if (width === 317 && height === 238) return "s";
-  if (width === 638 && height === 238) return "m";
-  if (width === 638 && height === 480) return "l";
-  if (width === 1280 && height === 480) return "fs";
-
-  // Fallback: find closest match
-  const sizes = [
-    { size: "s" as DeckSize, w: 317, h: 238 },
-    { size: "m" as DeckSize, w: 638, h: 238 },
-    { size: "l" as DeckSize, w: 638, h: 480 },
-    { size: "fs" as DeckSize, w: 1280, h: 480 },
-  ];
-
-  let closest = sizes[0];
-  let minDiff = Math.abs(width - closest.w) + Math.abs(height - closest.h);
-
-  for (const s of sizes) {
-    const diff = Math.abs(width - s.w) + Math.abs(height - s.h);
-    if (diff < minDiff) {
-      minDiff = diff;
-      closest = s;
-    }
-  }
-
-  return closest.size;
 }
 
 // Map OpenWeatherMap icon codes to Meteocons icon names
