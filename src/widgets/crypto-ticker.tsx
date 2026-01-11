@@ -112,10 +112,10 @@ function getChangeLabelStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "10px" },
-    m: { fontSize: "12px" },
-    l: { fontSize: "14px" },
-    fs: { fontSize: "18px" },
+    s: { fontSize: "14px" },
+    m: { fontSize: "16px" },
+    l: { fontSize: "18px" },
+    fs: { fontSize: "20px" },
   };
 
   return { ...base, ...sizeStyles[size] };
@@ -172,7 +172,7 @@ function getLastUpdatedStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "12px" },
+    s: { fontSize: "14px" },
     m: { fontSize: "14px" },
     l: { fontSize: "16px" },
     fs: { fontSize: "18px" },
@@ -367,7 +367,6 @@ function formatLastUpdated(
     timeZone: tz,
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
   });
 }
 
