@@ -60,6 +60,7 @@ widgets:
       coin: BTC
       fiat: USD
       showVolume: true
+      showChange: all # Show 1h, 24h, 7d changes
 
   - id: eth_price
     type: crypto-ticker
@@ -67,6 +68,7 @@ widgets:
       coin: ETH
       fiat: EUR
       showVolume: false
+      showChange: 24h # Show only 24h change (default)
 
   - id: ha_balkon
     type: homeassistant
