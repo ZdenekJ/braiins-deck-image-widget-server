@@ -68,6 +68,15 @@ widgets:
       fiat: EUR
       showVolume: false
 
+  - id: ha_balkon
+    type: homeassistant
+    config:
+      title: "Teploměr balkon"
+      entities:
+        - sensor.venkovni_teplota
+        - sensor.venkovni_vlhkost
+        - sensor.venkovni_tlak
+
   # Tier 2: Custom widgets (uncomment to use)
   #
   # - id: my_custom_widget
