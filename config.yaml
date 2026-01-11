@@ -14,25 +14,29 @@ defaults:
 
 widgets:
   # Tier 1: Built-in Widgets
-
-  - id: clock_main
-    type: clock
-    config:
-      format: 24h
-      showSeconds: true
-      showDate: true
-
-  - id: clock_simple
-    type: clock
-    config:
-      format: 12h
-      showSeconds: false
-      showDate: false
-
   - id: fuzzy_clock
     type: fuzzy-clock
     config:
     #  showDigital: true # Optional - show digital time below fuzzy text
+
+  - id: date_default
+    type: date
+    config:
+      # Default: "pátek 10. leden 2026" (cs-CZ locale from defaults)
+
+  - id: date
+    type: date
+    config:
+      weekday: long
+      month: long
+      showWeekNumber: true
+
+  - id: date_eng
+    type: date
+    config:
+      month: 2-digit
+      showWeekNumber: true
+      locale: en-US
 
   - id: weather_zdar
     type: weather
