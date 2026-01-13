@@ -4,22 +4,7 @@ This directory stores font files used for rendering widgets.
 
 ## Default Font (Inter)
 
-By default, the server uses **Inter** font. Download it and place it here:
-
-### Quick Download
-
-**Option 1:** Direct download
-```
-https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.ttf
-```
-
-**Option 2:** Google Fonts
-1. Visit https://fonts.google.com/specimen/Inter
-2. Download family → extract → copy `Inter-Regular.ttf` to this folder
-
-**Option 3:** Official GitHub
-1. Visit https://github.com/rsms/inter/releases
-2. Download latest → extract → copy `Inter-Regular.ttf` to this folder
+By default, the server uses **Inter** font.
 
 ## Using a Custom Font
 
@@ -29,8 +14,8 @@ https://github.com/rsms/inter/raw/master/docs/font-files/Inter-Regular.ttf
 ```yaml
 server:
   font:
-    family: "YourFontName"  # Font family name
-    file: fonts/YourFont.ttf  # Path relative to project root
+    family: "YourFontName" # Font family name
+    file: fonts/YourFont.ttf # Path relative to project root
 ```
 
 3. Restart the server
@@ -44,6 +29,7 @@ npm run dev
 ```
 
 You should see:
+
 ```
 ✓ Font 'Inter' loaded from D:\...\fonts\Inter-Regular.ttf
 ```
