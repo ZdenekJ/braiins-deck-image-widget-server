@@ -69,10 +69,10 @@ function getPriceStyle(size: DeckSize): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "28px" },
-    m: { fontSize: "42px" },
-    l: { fontSize: "56px" },
-    fs: { fontSize: "84px" },
+    s: { fontSize: "32px" },
+    m: { fontSize: "48px" },
+    l: { fontSize: "64px" },
+    fs: { fontSize: "90px" },
   };
 
   return { ...base, ...sizeStyles[size] };
@@ -118,10 +118,10 @@ function getChangeLabelStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "14px" },
-    m: { fontSize: "16px" },
-    l: { fontSize: "18px" },
-    fs: { fontSize: "20px" },
+    s: { fontSize: "18px" },
+    m: { fontSize: "24px" },
+    l: { fontSize: "28px" },
+    fs: { fontSize: "32px" },
   };
 
   return { ...base, ...sizeStyles[size] };
@@ -140,10 +140,10 @@ function getChangeValueStyle(
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "14px" },
-    m: { fontSize: "18px" },
-    l: { fontSize: "22px" },
-    fs: { fontSize: "32px" },
+    s: { fontSize: "18px" },
+    m: { fontSize: "28px" },
+    l: { fontSize: "32px" },
+    fs: { fontSize: "40px" },
   };
 
   return { ...base, ...sizeStyles[size] };
