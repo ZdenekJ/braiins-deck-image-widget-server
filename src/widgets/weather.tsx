@@ -467,5 +467,4 @@ async function WeatherWidget(props: WidgetProps<WeatherConfig>) {
 export default {
   component: WeatherWidget,
   cacheTtl: 600, // 10 minutes cache
-  // Note: fetchData is not used because we need locale from props
 } as Widget<WeatherConfig>;
