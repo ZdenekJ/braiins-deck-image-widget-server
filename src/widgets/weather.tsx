@@ -27,6 +27,7 @@ interface WeatherData {
   conditionCode: number;
   icon: string; // OpenWeatherMap icon code (e.g., "01d", "10n")
   iconDataUri: string; // Base64 data URI of the icon
+  isMockData: boolean; // Flag indicating if this is mock/fallback data
 }
 
 // ============================================================================
@@ -47,6 +48,7 @@ function getContainerStyle(size: DeckSize, theme: string): CSSProperties {
     color: colors.text,
     fontFamily: "Inter, sans-serif",
     boxSizing: "border-box",
+    position: "relative", // For absolute positioning of warning banner
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
@@ -197,6 +199,35 @@ function getDetailStyle(size: DeckSize, theme: string): CSSProperties {
   return { ...base, ...sizeStyles[size] };
 }
 
+function getWarningBannerStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
+  const base = {
+    position: "absolute",
+    top: "0",
+    left: "0",
+    right: "0",
+    background: colors.error,
+    color: "#ffffff",
+    padding: "4px 8px",
+    fontSize: "11px",
+    fontWeight: "700",
+    textAlign: "center",
+    zIndex: "1000",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  };
+
+  const sizeStyles: Record<DeckSize, CSSProperties> = {
+    s: { fontSize: "16px", padding: "2px 4px" },
+    m: { fontSize: "20px", padding: "3px 6px" },
+    l: { fontSize: "24px", padding: "4px 8px" },
+    fs: { fontSize: "28px", padding: "5px 10px" },
+  };
+
+  return { ...base, ...sizeStyles[size] };
+}
+
 // Map OpenWeatherMap icon codes to Meteocons icon names
 const weatherIconMap: Record<string, string> = {
   // Jasno (Clear sky)
@@ -307,6 +338,7 @@ async function fetchWeatherData(
   let humidity = 65;
   let wind = 12;
   let conditionCodeVal = 802;
+  let isMockData = true; // Track if using mock data
 
   // If API key provided, try to fetch real data
   if (apiKey) {
@@ -329,16 +361,25 @@ async function fetchWeatherData(
         wind = Math.round(data.wind.speed);
         conditionCodeVal = data.weather[0]?.id || 800;
         iconCode = data.weather[0]?.icon || "01d";
+        isMockData = false; // Successfully fetched real data
       } else {
         console.error(
           `OpenWeatherMap API error: ${response.status} ${response.statusText}`
         );
+        console.warn(
+          "⚠️  Using mock weather data - check API key and city configuration"
+        );
       }
     } catch (error) {
       console.error("Failed to fetch weather data:", error);
+      console.warn(
+        "⚠️  Using mock weather data - check network connection and API configuration"
+      );
     }
   } else {
-    console.log("No OpenWeatherMap API key provided, using mock data");
+    console.warn(
+      "⚠️  No OpenWeatherMap API key provided, using mock weather data"
+    );
   }
 
   // Load icon data URI
@@ -352,6 +393,7 @@ async function fetchWeatherData(
     conditionCode: conditionCodeVal,
     icon: iconCode,
     iconDataUri,
+    isMockData,
   };
 }
 
@@ -385,6 +427,7 @@ async function WeatherWidget(props: WidgetProps<WeatherConfig>) {
   const cityStyle = getCityStyle(size);
   const conditionStyle = getConditionStyle(size, theme);
   const detailStyle = getDetailStyle(size, theme);
+  const warningStyle = getWarningBannerStyle(size, theme);
 
   // Build JSX structure with pixel-perfect styles
   return {
@@ -392,6 +435,14 @@ async function WeatherWidget(props: WidgetProps<WeatherConfig>) {
     props: {
       style: containerStyle,
       children: [
+        // Warning banner (only shown if using mock data)
+        weather.isMockData && {
+          type: "div",
+          props: {
+            style: warningStyle,
+            children: "⚠️ MOCK DATA - Check API Key & Config",
+          },
+        },
         // Left side: Icon and Temperature
         {
           type: "div",

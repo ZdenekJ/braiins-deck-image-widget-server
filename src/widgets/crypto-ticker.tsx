@@ -19,6 +19,7 @@ interface CryptoData {
   volume?: number;
   symbol: string;
   lastUpdated?: number; // Unix timestamp
+  isMockData?: boolean; // Flag indicating if this is mock/fallback data
 }
 
 // ============================================================================
@@ -41,6 +42,7 @@ function getContainerStyle(theme: string): CSSProperties {
     boxSizing: "border-box",
     padding: "20px",
     gap: "8px",
+    position: "relative", // For absolute positioning of warning banner
   };
 }
 
@@ -187,6 +189,35 @@ function getLastUpdatedStyle(size: DeckSize, theme: string): CSSProperties {
   return { ...base, ...sizeStyles[size] };
 }
 
+function getWarningBannerStyle(size: DeckSize, theme: string): CSSProperties {
+  const colors = getThemeColors(theme as "dark" | "light");
+
+  const base = {
+    position: "absolute",
+    top: "0",
+    left: "0",
+    right: "0",
+    background: colors.error,
+    color: "#ffffff",
+    padding: "4px 8px",
+    fontSize: "20px",
+    fontWeight: "700",
+    textAlign: "center",
+    zIndex: "1000",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  };
+
+  const sizeStyles: Record<DeckSize, CSSProperties> = {
+    s: { fontSize: "16px", padding: "2px 4px" },
+    m: { fontSize: "20px", padding: "3px 6px" },
+    l: { fontSize: "24px", padding: "4px 8px" },
+    fs: { fontSize: "28px", padding: "5px 10px" },
+  };
+
+  return { ...base, ...sizeStyles[size] };
+}
+
 // ============================================================================
 // DATA FETCHING
 // ============================================================================
@@ -200,6 +231,7 @@ const MOCK_CRYPTO: CryptoData = {
   volume: 28000000000,
   symbol: "BTC",
   lastUpdated: Date.now(),
+  isMockData: true,
 };
 
 // Map common coin symbols to CoinGecko IDs
@@ -238,6 +270,9 @@ async function fetchCryptoData(config: CryptoConfig): Promise<CryptoData> {
       console.error(
         `CoinGecko API error: ${response.status} ${response.statusText}`
       );
+      console.warn(
+        "⚠️  Using mock crypto data - check CoinGecko API status and rate limits"
+      );
       return MOCK_CRYPTO;
     }
 
@@ -245,6 +280,9 @@ async function fetchCryptoData(config: CryptoConfig): Promise<CryptoData> {
 
     if (!data || data.length === 0) {
       console.error(`No data for coin: ${coinId}`);
+      console.warn(
+        "⚠️  Using mock crypto data - check coin symbol configuration"
+      );
       return MOCK_CRYPTO;
     }
 
@@ -260,9 +298,11 @@ async function fetchCryptoData(config: CryptoConfig): Promise<CryptoData> {
       lastUpdated: coinData.last_updated
         ? new Date(coinData.last_updated).getTime()
         : Date.now(),
+      isMockData: false, // Successfully fetched real data
     };
   } catch (error) {
     console.error("Failed to fetch crypto data:", error);
+    console.warn("⚠️  Using mock crypto data - check network connection");
     return MOCK_CRYPTO;
   }
 }
@@ -370,9 +410,21 @@ async function CryptoTickerWidget(props: WidgetProps<CryptoConfig>) {
   const changeLabelStyle = getChangeLabelStyle(size, theme);
   const volumeStyle = getVolumeStyle(size, theme);
   const lastUpdatedStyle = getLastUpdatedStyle(size, theme);
+  const warningStyle = getWarningBannerStyle(size, theme);
 
   // Build children array
   const children: any[] = [];
+
+  // Add warning banner if using mock data
+  if (crypto.isMockData) {
+    children.push({
+      type: "div",
+      props: {
+        style: warningStyle,
+        children: "⚠️ MOCK DATA - Check API Configuration",
+      },
+    });
+  }
 
   // Add symbol
   children.push({
