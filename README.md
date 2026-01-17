@@ -320,6 +320,11 @@ server:
   host: 0.0.0.0
   authToken: "${WIDGET_TOKEN}"  # volitelné
 
+  # Font configuration (optional)
+  font:
+    family: "Inter"  # Font family name
+    file: fonts/Inter-Regular.ttf  # Path relative to project root
+
 defaults:
   locale: cs-CZ
   tz: Europe/Prague
@@ -338,6 +343,62 @@ widgets:
     config:
       option: value
 ```
+
+### Local Configuration (config.local.yaml)
+
+Pro personální nastavení vytvoř soubor `config.local.yaml`. Tento soubor:
+- **NENÍ** v Gitu (automaticky ignorován)
+- **Merguje se** s `config.yaml` při startu
+- **Local hodnoty mají přednost** před základními
+
+#### Merge pravidla:
+
+1. **server a defaults**: Jednotlivé property se mergují (local overriduje base)
+2. **widgets**: Mergují se podle `id`
+   - Widget s ID z local configu **kompletně nahradí** stejný widget z base configu
+   - Widgety z base configu bez kolize ID se **přidají** do final configu
+
+#### Příklad config.local.yaml:
+
+```yaml
+# Override server settings
+server:
+  port: 3001
+  authToken: "${MY_LOCAL_TOKEN}"
+
+# Override defaults
+defaults:
+  theme: light
+  locale: en-US
+
+# Override or add widgets
+widgets:
+  # This REPLACES the weather_prague widget from base config (same ID)
+  - id: weather_prague
+    type: weather
+    config:
+      city: Berlin
+      apiKey: "${MY_API_KEY}"
+
+  # This is a NEW widget (ID not in base config)
+  - id: my_test_widget
+    type: fuzzy-clock
+
+# Widgets from base config that don't have ID conflicts will still be included
+```
+
+**Při startu serveru uvidíš detailní log mergování:**
+```
+🔀 Merging widgets configuration:
+   ✓ Widgets merged (local takes precedence)
+     - 2 widget(s) from local config (primary)
+     - 7 widget(s) added from base config
+     - 1 widget(s) overridden by local config
+       ⚠️  weather_prague (local replaces base)
+     - Total: 9 widget(s) in final config
+```
+
+Vzorový soubor: `config.local.yaml.example`
 
 ## Environment Variables
 

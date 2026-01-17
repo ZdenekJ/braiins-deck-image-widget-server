@@ -1,0 +1,63 @@
+# config.local.yaml.example
+#
+# This is an EXAMPLE of local configuration file.
+# Copy this file to config.local.yaml and customize it with your settings.
+#
+# Local configuration (config.local.yaml) is NOT tracked by Git and will
+# override settings from config.yaml. This allows you to:
+# - Keep your API keys and secrets safe
+# - Customize settings without modifying the base config
+# - Pull updates from Git without losing your local settings
+#
+# MERGE BEHAVIOR:
+# - server and defaults sections: Individual properties are merged (local overrides base)
+# - widgets section: Widgets are merged BY ID
+#   * If a widget ID exists in both configs, the LOCAL version completely replaces the base version
+#   * If a widget ID only exists in base config, it's added to the final config
+#   * If a widget ID only exists in local config, it's used as-is
+
+# Example: Override server settings
+server:
+  port: 80
+  host: 127.0.0.1
+  authToken: "${WIDGET_TOKEN}" # Use environment variable
+
+  # Override font settings
+  font:
+    family: "Roboto"
+    file: fonts/Roboto-Regular.ttf
+
+# Example: Override default settings
+defaults:
+  locale: en-US
+  tz: America/New_York
+  theme: light
+  size: l
+
+# Example: Override or add widgets
+widgets:
+  # This will REPLACE the weather widget from base config (same ID)
+  - id: weather_prague
+    type: weather
+    config:
+      city: New York
+      country: US
+      apiKey: "${OPENWEATHER_API_KEY}"
+      units: imperial
+
+  # This will REPLACE the crypto ticker from base config (same ID)
+  - id: crypto_btc
+    type: crypto-ticker
+    config:
+      coin: ETH
+      fiat: USD
+      showVolume: true
+      showChange: all
+
+  # This is a NEW widget (ID not in base config)
+  - id: my_custom_widget
+    type: fuzzy-clock
+    config:
+      showDigital: true
+
+  # Any widgets from base config with IDs NOT listed here will still be included
