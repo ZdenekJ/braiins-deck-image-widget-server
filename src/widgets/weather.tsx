@@ -156,8 +156,8 @@ function getCityStyle(size: DeckSize): CSSProperties {
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
     s: { fontSize: "22px", margin: "0 auto" },
-    m: { fontSize: "26px" },
-    l: { fontSize: "32px" },
+    m: { fontSize: "28px" },
+    l: { fontSize: "40px" },
     fs: { fontSize: "48px" },
   };
 
@@ -173,8 +173,8 @@ function getConditionStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "20px", margin: "0 auto" },
-    m: { fontSize: "24px" },
+    s: { fontSize: "24px", margin: "0 auto" },
+    m: { fontSize: "26px" },
     l: { fontSize: "32px" },
     fs: { fontSize: "48px" },
   };
@@ -283,7 +283,7 @@ async function loadIconDataUri(iconCode: string): Promise<string> {
       "assets",
       "icons",
       "weather",
-      `${iconFileName}.svg`
+      `${iconFileName}.svg`,
     );
 
     // Read SVG file
@@ -291,7 +291,7 @@ async function loadIconDataUri(iconCode: string): Promise<string> {
 
     // Create data URI
     return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString(
-      "base64"
+      "base64",
     )}`;
   } catch (error) {
     console.error(`Failed to load weather icon for ${iconCode}:`, error);
@@ -328,7 +328,7 @@ function getLabels(locale: string) {
 // Fetch weather data from OpenWeatherMap API
 async function fetchWeatherData(
   config: WeatherConfig,
-  locale: string
+  locale: string,
 ): Promise<WeatherData> {
   const { city, country, apiKey, units = "metric" } = config;
 
@@ -364,21 +364,21 @@ async function fetchWeatherData(
         isMockData = false; // Successfully fetched real data
       } else {
         console.error(
-          `OpenWeatherMap API error: ${response.status} ${response.statusText}`
+          `OpenWeatherMap API error: ${response.status} ${response.statusText}`,
         );
         console.warn(
-          "⚠️  Using mock weather data - check API key and city configuration"
+          "⚠️  Using mock weather data - check API key and city configuration",
         );
       }
     } catch (error) {
       console.error("Failed to fetch weather data:", error);
       console.warn(
-        "⚠️  Using mock weather data - check network connection and API configuration"
+        "⚠️  Using mock weather data - check network connection and API configuration",
       );
     }
   } else {
     console.warn(
-      "⚠️  No OpenWeatherMap API key provided, using mock weather data"
+      "⚠️  No OpenWeatherMap API key provided, using mock weather data",
     );
   }
 

@@ -55,9 +55,9 @@ function getSymbolStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "20px" },
-    m: { fontSize: "26px" },
-    l: { fontSize: "32px" },
+    s: { fontSize: "24px" },
+    m: { fontSize: "32px" },
+    l: { fontSize: "40px" },
     fs: { fontSize: "48px" },
   };
 
@@ -132,7 +132,7 @@ function getChangeLabelStyle(size: DeckSize, theme: string): CSSProperties {
 function getChangeValueStyle(
   size: DeckSize,
   theme: string,
-  isPositive: boolean
+  isPositive: boolean,
 ): CSSProperties {
   const colors = getThemeColors(theme as "dark" | "light");
 
@@ -142,9 +142,9 @@ function getChangeValueStyle(
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "18px" },
-    m: { fontSize: "28px" },
-    l: { fontSize: "32px" },
+    s: { fontSize: "20px" },
+    m: { fontSize: "32px" },
+    l: { fontSize: "36px" },
     fs: { fontSize: "40px" },
   };
 
@@ -162,7 +162,7 @@ function getVolumeStyle(size: DeckSize, theme: string): CSSProperties {
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
     s: { fontSize: "11px", display: "none" }, // Hide on small
-    m: { fontSize: "14px" },
+    m: { fontSize: "14px", display: "none" },
     l: { fontSize: "16px" },
     fs: { fontSize: "22px" },
   };
@@ -180,10 +180,10 @@ function getLastUpdatedStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "14px" },
-    m: { fontSize: "14px" },
+    s: { fontSize: "16px" },
+    m: { fontSize: "16px" },
     l: { fontSize: "16px" },
-    fs: { fontSize: "18px" },
+    fs: { fontSize: "20px" },
   };
 
   return { ...base, ...sizeStyles[size] };
@@ -268,10 +268,10 @@ async function fetchCryptoData(config: CryptoConfig): Promise<CryptoData> {
 
     if (!response.ok) {
       console.error(
-        `CoinGecko API error: ${response.status} ${response.statusText}`
+        `CoinGecko API error: ${response.status} ${response.statusText}`,
       );
       console.warn(
-        "⚠️  Using mock crypto data - check CoinGecko API status and rate limits"
+        "⚠️  Using mock crypto data - check CoinGecko API status and rate limits",
       );
       return MOCK_CRYPTO;
     }
@@ -281,7 +281,7 @@ async function fetchCryptoData(config: CryptoConfig): Promise<CryptoData> {
     if (!data || data.length === 0) {
       console.error(`No data for coin: ${coinId}`);
       console.warn(
-        "⚠️  Using mock crypto data - check coin symbol configuration"
+        "⚠️  Using mock crypto data - check coin symbol configuration",
       );
       return MOCK_CRYPTO;
     }
@@ -358,7 +358,7 @@ function formatVolume(vol: number | undefined, locale: string): string {
 
 function formatChangePercent(
   change: number | undefined,
-  locale: string
+  locale: string,
 ): string {
   if (change === undefined) return "N/A";
 
@@ -374,7 +374,7 @@ function formatChangePercent(
 function formatLastUpdated(
   timestamp: number | undefined,
   locale: string,
-  tz: string
+  tz: string,
 ): string {
   if (!timestamp) return "";
 
@@ -556,7 +556,7 @@ async function CryptoTickerWidget(props: WidgetProps<CryptoConfig>) {
         children: `Updated: ${formatLastUpdated(
           crypto.lastUpdated,
           locale,
-          tz
+          tz,
         )}`,
       },
     });

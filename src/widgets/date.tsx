@@ -17,11 +17,15 @@ type CSSProperties = Record<string, string | number>;
 
 function getWeekNumber(date: Date): number {
   // ISO 8601 week number calculation
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const weekNo = Math.ceil(
+    ((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
+  );
   return weekNo;
 }
 
@@ -40,7 +44,7 @@ function getWeekNumberText(locale: string, weekNum: number): string {
 function getDateText(
   tz: string,
   locale: string,
-  monthFormat: "numeric" | "2-digit" | "short" | "long"
+  monthFormat: "numeric" | "2-digit" | "short" | "long",
 ): string {
   const now = new Date();
 
@@ -50,14 +54,13 @@ function getDateText(
     month: monthFormat,
     year: "numeric",
   };
-
   return now.toLocaleDateString(locale, dateOptions);
 }
 
 function getWeekdayText(
   tz: string,
   locale: string,
-  weekdayFormat: "short" | "long"
+  weekdayFormat: "short" | "long",
 ): string {
   const now = new Date();
 
@@ -65,7 +68,6 @@ function getWeekdayText(
     timeZone: tz,
     weekday: weekdayFormat,
   };
-
   return now.toLocaleDateString(locale, weekdayOptions);
 }
 
@@ -103,10 +105,10 @@ function getWeekdayStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "16px" },
-    m: { fontSize: "20px" },
-    l: { fontSize: "24px" },
-    fs: { fontSize: "36px" },
+    s: { fontSize: "28px" },
+    m: { fontSize: "36px" },
+    l: { fontSize: "48px" },
+    fs: { fontSize: "72px" },
   };
 
   return { ...base, ...sizeStyles[size] };
@@ -116,14 +118,14 @@ function getDateStyle(size: DeckSize): CSSProperties {
   const base = {
     fontWeight: "700",
     textAlign: "center",
-    lineHeight: "1.2",
+    lineHeight: "1.4",
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
     s: { fontSize: "32px" },
     m: { fontSize: "48px" },
     l: { fontSize: "64px" },
-    fs: { fontSize: "96px" },
+    fs: { fontSize: "120px" },
   };
 
   return { ...base, ...sizeStyles[size] };
@@ -140,10 +142,10 @@ function getWeekNumberStyle(size: DeckSize, theme: string): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "14px" },
-    m: { fontSize: "18px" },
-    l: { fontSize: "22px" },
-    fs: { fontSize: "32px" },
+    s: { fontSize: "28px" },
+    m: { fontSize: "32px" },
+    l: { fontSize: "40px" },
+    fs: { fontSize: "64px" },
   };
 
   return { ...base, ...sizeStyles[size] };
@@ -155,7 +157,12 @@ function getWeekNumberStyle(size: DeckSize, theme: string): CSSProperties {
 
 async function DateWidget(props: WidgetProps<DateConfig>) {
   const { width, height, config, theme, locale, tz } = props;
-  const { weekday, month = "long", showWeekNumber = false, locale: configLocale } = config;
+  const {
+    weekday,
+    month = "long",
+    showWeekNumber = false,
+    locale: configLocale,
+  } = config;
 
   // Determine deck size
   const size = getDeckSize(width, height);
@@ -165,7 +172,9 @@ async function DateWidget(props: WidgetProps<DateConfig>) {
 
   // Get date parts
   const dateText = getDateText(tz, effectiveLocale, month);
-  const weekdayText = weekday ? getWeekdayText(tz, effectiveLocale, weekday) : null;
+  const weekdayText = weekday
+    ? getWeekdayText(tz, effectiveLocale, weekday)
+    : null;
   const weekNumberText = showWeekNumber
     ? getWeekNumberText(effectiveLocale, getWeekNumber(new Date()))
     : null;

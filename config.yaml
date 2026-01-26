@@ -81,20 +81,20 @@ widgets:
       title: "Teploměr balkon"
       entities:
         - sensor.venkovni_teplota
-        - sensor.venkovni_vlhkost
-        - sensor.venkovni_tlak
+  #       - sensor.venkovni_vlhkost
+#        - sensor.venkovni_tlak
 
-  # Tier 2: Custom widgets (uncomment to use)
-  #
-  # - id: my_custom_widget
-  #   file: ./widgets/my-widget.tsx
-  #   config:
-  #     title: "Custom Widget"
-  #     value: 42
+# Tier 2: Custom widgets (uncomment to use)
+#
+# - id: my_custom_widget
+#   file: ./widgets/my-widget.tsx
+#   config:
+#     title: "Custom Widget"
+#     value: 42
 
-  # Tier 3: NPM plugins (uncomment to use)
-  #
-  # - id: advanced_widget
-  #   plugin: "@someone/braiins-widget-xyz"
-  #   config:
-  #     option: value
+# Tier 3: NPM plugins (uncomment to use)
+#
+# - id: advanced_widget
+#   plugin: "@someone/braiins-widget-xyz"
+#   config:
+#     option: value

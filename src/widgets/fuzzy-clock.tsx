@@ -148,8 +148,8 @@ function getFuzzyTime(locale: string, tz: string): string {
   const lang = locale.startsWith("cs")
     ? langData.cs
     : locale.startsWith("sk")
-    ? langData.cs
-    : langData.en;
+      ? langData.cs
+      : langData.en;
   const isCzech = locale.startsWith("cs") || locale.startsWith("sk");
 
   // Get current time in specified timezone
@@ -258,10 +258,10 @@ function getFuzzyTextStyle(size: DeckSize): CSSProperties {
   };
 
   const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "28px" },
-    m: { fontSize: "42px" },
-    l: { fontSize: "56px" },
-    fs: { fontSize: "84px" },
+    s: { fontSize: "40px" },
+    m: { fontSize: "48px" },
+    l: { fontSize: "64px" },
+    fs: { fontSize: "96px" },
   };
 
   return { ...base, ...sizeStyles[size] };
