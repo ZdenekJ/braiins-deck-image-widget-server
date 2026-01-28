@@ -6,16 +6,18 @@ import { dirname, join } from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export interface FontConfig {
+export interface FontEntry {
   family: string; // Font family name (e.g., "Inter")
   file: string; // Path to font file relative to project root
+  weight?: number; // Font weight (100-900), defaults to 400
+  style?: "normal" | "italic"; // Font style, defaults to "normal"
 }
 
 export interface ServerConfig {
   port: number;
   host: string;
   authToken?: string;
-  font?: FontConfig; // Optional font configuration
+  fonts?: FontEntry[]; // Array of font configurations
 }
 
 export interface DefaultsConfig {
@@ -69,10 +71,11 @@ function mergeServerConfig(
 ): Partial<ServerConfig> {
   if (!local) return base;
 
+  // For fonts array: local completely replaces base if provided
   return {
     ...base,
     ...local,
-    font: local.font ? { ...base.font, ...local.font } : base.font,
+    fonts: local.fonts ?? base.fonts,
   };
 }
 
@@ -194,9 +197,9 @@ export function loadConfig(configPath?: string): Config {
         console.log(`     - host: ${localConfig.server.host}`);
       if (localConfig.server.authToken)
         console.log(`     - authToken: ***configured***`);
-      if (localConfig.server.font)
+      if (localConfig.server.fonts)
         console.log(
-          `     - font: ${localConfig.server.font.family || "default"}`
+          `     - fonts: ${localConfig.server.fonts.length} font(s) configured`
         );
     } else {
       console.log(`   ℹ️  Using base server configuration`);
@@ -271,21 +274,33 @@ export function loadConfig(configPath?: string): Config {
     mergedWidgets = baseConfig.widgets;
   }
 
+  // Default fonts if none provided
+  const defaultFonts: FontEntry[] = [
+    {
+      family: "Inter",
+      file: "fonts/Inter-Regular.ttf",
+      weight: 400,
+      style: "normal",
+    },
+  ];
+
+  // Normalize fonts array (apply defaults for weight/style)
+  const fonts: FontEntry[] = (mergedServer.fonts || defaultFonts).map(
+    (f: any) => ({
+      family: f.family,
+      file: f.file,
+      weight: f.weight || 400,
+      style: f.style || "normal",
+    })
+  );
+
   // Apply defaults to merged config
   const config: Config = {
     server: {
       port: mergedServer.port || 3000,
       host: mergedServer.host || "0.0.0.0",
       authToken: mergedServer.authToken,
-      font: mergedServer.font
-        ? {
-            family: mergedServer.font.family || "Inter",
-            file: mergedServer.font.file || "fonts/Inter-Regular.ttf",
-          }
-        : {
-            family: "Inter",
-            file: "fonts/Inter-Regular.ttf",
-          },
+      fonts,
     },
     defaults: {
       locale: mergedDefaults.locale || "cs-CZ",
@@ -301,8 +316,11 @@ export function loadConfig(configPath?: string): Config {
   console.log("FINAL CONFIGURATION SUMMARY");
   console.log("========================================");
   console.log(`Server: ${config.server.host}:${config.server.port}`);
-  if (config.server.font) {
-    console.log(`Font: ${config.server.font.family} (${config.server.font.file})`);
+  if (config.server.fonts && config.server.fonts.length > 0) {
+    console.log(`Fonts (${config.server.fonts.length}):`);
+    config.server.fonts.forEach((f) => {
+      console.log(`  - ${f.family} (weight: ${f.weight}, style: ${f.style}) → ${f.file}`);
+    });
   }
   console.log(
     `Defaults: ${config.defaults.locale}, ${config.defaults.tz}, ${config.defaults.theme}, ${config.defaults.size}`

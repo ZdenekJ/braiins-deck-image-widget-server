@@ -1,7 +1,7 @@
 import satori from "satori";
 import sharp from "sharp";
 import type { ReactElement } from "./types.js";
-import type { FontConfig } from "./config.js";
+import type { FontEntry } from "./config.js";
 import parse from "html-react-parser";
 import { readFile } from "fs/promises";
 import { join } from "path";
@@ -17,46 +17,112 @@ export interface RenderOptions {
   format: "png" | "jpg" | "jpeg";
 }
 
-// Font cache
-let fontDataCache: ArrayBuffer | null = null;
-let currentFontConfig: FontConfig = {
-  family: "Inter",
-  file: "fonts/Inter-Regular.ttf",
-};
+// Satori font weight type (100, 200, 300, 400, 500, 600, 700, 800, 900)
+type SatoriWeight = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
+
+// Satori font type
+interface SatoriFont {
+  name: string;
+  data: ArrayBuffer;
+  weight: SatoriWeight;
+  style: "normal" | "italic";
+}
+
+// Font cache - stores loaded font data by file path
+const fontDataCache: Map<string, ArrayBuffer> = new Map();
+
+// Current font configurations
+let currentFonts: FontEntry[] = [
+  {
+    family: "Inter",
+    file: "fonts/Inter-Regular.ttf",
+    weight: 400,
+    style: "normal",
+  },
+];
 
 /**
- * Set font configuration (should be called once at server startup)
+ * Set font configurations (should be called once at server startup)
  */
-export function setFontConfig(config: FontConfig): void {
-  currentFontConfig = config;
+export function setFonts(fonts: FontEntry[]): void {
+  currentFonts = fonts;
   // Clear cache to force reload with new config
-  fontDataCache = null;
+  fontDataCache.clear();
 }
 
 /**
- * Load font data from configured path
+ * Load a single font file and return ArrayBuffer
  */
-async function loadFont(): Promise<ArrayBuffer> {
-  if (fontDataCache) {
-    return fontDataCache;
+async function loadFontFile(filePath: string): Promise<ArrayBuffer> {
+  // Check cache first
+  if (fontDataCache.has(filePath)) {
+    return fontDataCache.get(filePath)!;
   }
 
   try {
     // Path is relative to project root (parent of src/ or dist/)
-    const fontPath = join(__dirname, "..", currentFontConfig.file);
-    const fontBuffer = await readFile(fontPath);
-    fontDataCache = fontBuffer.buffer.slice(
+    const fullPath = join(__dirname, "..", filePath);
+    const fontBuffer = await readFile(fullPath);
+    const arrayBuffer = fontBuffer.buffer.slice(
       fontBuffer.byteOffset,
       fontBuffer.byteOffset + fontBuffer.byteLength
     );
-    console.log(`✓ Font '${currentFontConfig.family}' loaded from ${fontPath}`);
-    return fontDataCache;
+    fontDataCache.set(filePath, arrayBuffer);
+    return arrayBuffer;
   } catch (error) {
-    console.error("Failed to load font:", error);
+    console.error(`Failed to load font from '${filePath}':`, error);
     throw new Error(
-      `Font file not found at '${currentFontConfig.file}'. Please check your font configuration in config.yaml. See fonts/README.md for instructions.`
+      `Font file not found at '${filePath}'. Please check your font configuration in config.yaml. See fonts/README.md for instructions.`
     );
   }
+}
+
+/**
+ * Load all configured fonts and return array for Satori
+ */
+async function loadAllFonts(): Promise<SatoriFont[]> {
+  const fonts: SatoriFont[] = [];
+
+  for (const fontConfig of currentFonts) {
+    try {
+      const data = await loadFontFile(fontConfig.file);
+      const weight = (fontConfig.weight || 400) as SatoriWeight;
+      const style = fontConfig.style || "normal";
+      fonts.push({
+        name: fontConfig.family,
+        data,
+        weight,
+        style,
+      });
+      console.log(
+        `✓ Font '${fontConfig.family}' (weight: ${weight}, style: ${style}) loaded from ${fontConfig.file}`
+      );
+    } catch (error) {
+      console.error(`Failed to load font '${fontConfig.family}':`, error);
+      // Continue loading other fonts
+    }
+  }
+
+  if (fonts.length === 0) {
+    throw new Error(
+      "No fonts loaded. Please check your font configuration in config.yaml."
+    );
+  }
+
+  return fonts;
+}
+
+// Cached Satori fonts array (loaded once)
+let satoriFontsCache: SatoriFont[] | null = null;
+
+/**
+ * Get fonts for Satori (loads once, then cached)
+ */
+async function getSatoriFonts(): Promise<SatoriFont[]> {
+  if (satoriFontsCache === null) {
+    satoriFontsCache = await loadAllFonts();
+  }
+  return satoriFontsCache;
 }
 
 // Convert HTML string to React element using html-react-parser
@@ -85,21 +151,14 @@ export async function renderToImage(
       element = content;
     }
 
-    // Load font
-    const fontData = await loadFont();
+    // Load all configured fonts
+    const fonts = await getSatoriFonts();
 
     // Render to SVG using Satori
     const svg = await satori(element, {
       width,
       height,
-      fonts: [
-        {
-          name: currentFontConfig.family,
-          data: fontData,
-          weight: 400,
-          style: "normal",
-        },
-      ],
+      fonts,
     });
 
     // Convert SVG to PNG/JPG using Sharp

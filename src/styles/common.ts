@@ -39,7 +39,8 @@ export function getThemeColors(theme: "dark" | "light") {
 
 /**
  * Get base container styles that should be used by all widgets
- * These provide consistent foundation (dimensions, theme colors, font family)
+ * These provide consistent foundation (dimensions, theme colors)
+ * Note: fontFamily should be set by each widget directly (e.g., "Inter, sans-serif")
  *
  * @param theme - "dark" or "light"
  * @returns Base CSS properties for widget container
@@ -47,8 +48,8 @@ export function getThemeColors(theme: "dark" | "light") {
  * @example
  * const containerStyle = {
  *   ...getBaseContainerStyle(theme),
+ *   fontFamily: "Inter, sans-serif",
  *   padding: "20px",
- *   // Add widget-specific styles...
  * };
  */
 export function getBaseContainerStyle(theme: "dark" | "light"): CSSProperties {
@@ -59,7 +60,6 @@ export function getBaseContainerStyle(theme: "dark" | "light"): CSSProperties {
     height: "100%",
     background: colors.bg,
     color: colors.text,
-    fontFamily: "Inter, sans-serif",
     boxSizing: "border-box",
   };
 }

@@ -22,10 +22,14 @@ server:
   host: 127.0.0.1
   authToken: "${WIDGET_TOKEN}" # Use environment variable
 
-  # Override font settings
-  font:
-    family: "Roboto"
-    file: fonts/Roboto-Regular.ttf
+  # Override fonts - array of fonts (completely replaces base fonts)
+  fonts:
+    - family: "Roboto"
+      file: fonts/Roboto-Regular.ttf
+      weight: 400
+    - family: "Roboto"
+      file: fonts/Roboto-Bold.ttf
+      weight: 700
 
 # Example: Override default settings
 defaults:

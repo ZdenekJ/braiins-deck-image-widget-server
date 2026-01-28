@@ -6,10 +6,30 @@ server:
   # Optional authentication token (use environment variable)
   # authToken: "${WIDGET_TOKEN}"
 
-  # Font settings
-  font:
-    family: Inter # Font family name used in CSS
-    file: fonts/Inter-Regular.ttf # Path to font file (relative to project root)
+  # Font settings - array of fonts with family, file, weight, and style
+  # First font in the list is the "primary" font used by default
+  fonts:
+    - family: Inter
+      file: fonts/Inter-Regular.ttf
+      weight: 400 # normal
+    - family: Inter
+      file: fonts/Inter-Bold.ttf
+      weight: 700 # bold
+    - family: Inter
+      file: fonts/Inter-Black.ttf
+      weight: 900 # black
+    # You can add more fonts here
+    # Example: Add more weights of the same font
+    # - family: Inter
+    #   file: fonts/Inter-Bold.ttf
+    #   weight: 700 # bold
+    # - family: Inter
+    #   file: fonts/Inter-Light.ttf
+    #   weight: 300 # light
+    # Example: Add a different font family
+    # - family: "Roboto Mono"
+    #   file: fonts/RobotoMono-Regular.ttf
+    #   weight: 400
 
 defaults:
   locale: cs-CZ
