@@ -30,6 +30,24 @@ npm start
 
 Server poběží na `http://localhost:3000`
 
+## První spuštění krok za krokem (pro laika)
+
+1. **Nainstaluj Node.js 20+** (ověř příkazem `node -v`).
+2. **Nainstaluj závislosti**: `npm install`.
+3. **Spusť server**: `npm run dev`.
+4. **Otevři testovací URL v prohlížeči**:
+   - `http://localhost:3000/widget/clock_main.png?size=m`
+5. Pokud vidíš obrázek hodin, server funguje správně.
+
+### Rychlé ověření API
+
+```bash
+curl "http://localhost:3000/health"
+curl "http://localhost:3000/widgets"
+```
+
+Tip: Pro lokální změny konfigurace používej `config.local.yaml`, aby ses nemusel dotýkat hlavního `config.yaml`.
+
 ## BraiinsDeck rozměry
 
 BraiinsDeck podporuje pouze tyto rozměry (fixní!):
@@ -58,6 +76,8 @@ GET /widget/:widgetId.:format?size={size}&theme={theme}
 - **locale** - např. `cs-CZ` (default z config.yaml)
 - **tz** - časové pásmo, např. `Europe/Prague` (default z config.yaml)
 - **refresh** - `1` pro bypass cache
+- **deck_image_width** - vlastní šířka v px (pokud posílá zařízení)
+- **deck_image_height** - vlastní výška v px (pokud posílá zařízení)
 
 ### Ukázkové URL
 
@@ -146,6 +166,8 @@ http://localhost:3000/widget/btc_price.png?size=s
 ```
 
 ## Vytvoření vlastního widgetu
+
+Pokud chceš začít rychle, zkopíruj `examples/custom-widget.tsx` do `widgets/` a uprav pouze `config` + barvy. Pro pokročilejší pattern doporučuji přidat druhý example widget s `fetchData()` (např. `examples/status-with-fetch.tsx`) a odkazovat na něj z README.
 
 ### Způsob 1: JSX pomocí h() funkce
 
@@ -259,6 +281,56 @@ async function ResponsiveWidget(props: WidgetProps) {
   };
 }
 ```
+
+## Architektura (pro odborníka)
+
+Render pipeline:
+
+1. Fastify přijme request na `/widget/:widgetId.:format`
+2. `parseRenderRequest()` z query postaví normalizovaný render request
+3. `loader.ts` načte widget (built-in, custom file, nebo plugin)
+4. proběhne `fetchData()` (pokud je definováno) + cache dat
+5. `renderer.ts` vyrenderuje JSX objekt přes Satori do SVG
+6. Sharp převede SVG na PNG/JPG
+7. výstup se uloží do image cache a vrátí klientovi
+
+Tahle sekvence je klíčová, pokud chceš optimalizovat výkon, ladit cache, nebo psát vlastní plugin widgety.
+
+## Co přidat do README, aby bylo opravdu „blbuvzdorné"
+
+Doporučené doplnění:
+
+1. **Sekce „5 minut k prvnímu obrázku"** (copy/paste příkazy, bez vysvětlování internals).
+2. **Sekce „Nejčastější chyby při startu"** (Node verze, chybějící font, obsazený port).
+3. **Mini slovníček** (`widgetId`, `cacheTtl`, `theme`, `locale`, `tz`, `fetchData`).
+4. **Konkrétní workflow „chci vlastní widget"**:
+   - zkopíruj example,
+   - přejmenuj,
+   - přidej do `config.yaml`,
+   - otestuj URL.
+5. **Rozdělení dokumentace pro 2 cílovky**:
+   - „Začínám" (praktické kroky),
+   - „Pro vývojáře" (architektura, lifecycle, cache).
+
+## Obrázky widgetů: ano, určitě přidat
+
+Ano, screenshoty výrazně pomůžou. Největší hodnotu mají tyto srovnávací obrázky:
+
+- stejný widget ve velikostech `s`, `m`, `l`, `fs`
+- stejný widget v `dark` vs `light`
+- jeden built-in widget + jeden custom widget
+
+Doporučená struktura v README:
+
+```md
+### Clock widget
+
+| size=s | size=m | size=l | size=fs |
+|---|---|---|---|
+| ![clock-s](docs/images/clock-s.png) | ![clock-m](docs/images/clock-m.png) | ![clock-l](docs/images/clock-l.png) | ![clock-fs](docs/images/clock-fs.png) |
+```
+
+Tohle laikovi okamžitě ukáže, co má čekat na obrazovce.
 
 ## Theme colors
 
