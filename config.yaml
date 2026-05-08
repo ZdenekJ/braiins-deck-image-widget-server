@@ -39,12 +39,12 @@ defaults:
 
 widgets:
   # Tier 1: Built-in Widgets
-  - id: fuzzy_clock
+  - id: fuzzy-clock
     type: fuzzy-clock
     config:
     #  showDigital: true # Optional - show digital time below fuzzy text
 
-  - id: date_default
+  - id: date-default
     type: date
     config:
       # Default: "pátek 10. leden 2026" (cs-CZ locale from defaults)
@@ -56,14 +56,14 @@ widgets:
       month: long
       showWeekNumber: true
 
-  - id: date_eng
+  - id: date-eng
     type: date
     config:
       month: 2-digit
       showWeekNumber: true
       locale: en-US
 
-  - id: weather_zdar
+  - id: weather-zdar
     type: weather
     config:
       city: Žďár nad Sázavou
@@ -71,7 +71,7 @@ widgets:
       apiKey: "${OPENWEATHER_API_KEY}" # Optional - uses mock data if not set
       units: metric
 
-  - id: weather_ny
+  - id: weather-ny
     type: weather
     config:
       city: New York
@@ -79,7 +79,7 @@ widgets:
       apiKey: "${OPENWEATHER_API_KEY}" # Optional - uses mock data if not set
       units: imperial
 
-  - id: btc_price
+  - id: btc-price
     type: crypto-ticker
     config:
       coin: BTC
@@ -87,7 +87,7 @@ widgets:
       showVolume: true
       showChange: all # Show 1h, 24h, 7d changes
 
-  - id: eth_price
+  - id: eth-price
     type: crypto-ticker
     config:
       coin: ETH
@@ -95,7 +95,7 @@ widgets:
       showVolume: false
       showChange: 24h # Show only 24h change (default)
 
-  - id: ha_balkon
+  - id: ha-balkon
     type: homeassistant
     config:
       title: "Teploměr balkon"

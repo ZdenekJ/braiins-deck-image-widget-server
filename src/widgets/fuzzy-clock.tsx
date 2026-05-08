@@ -383,5 +383,5 @@ async function FuzzyClockWidget(props: WidgetProps<FuzzyClockConfig>) {
 
 export default {
   component: FuzzyClockWidget,
-  cacheTtl: 60, // Enough for word clock
+  cacheTtl: 30, // Enough for word clock
 } as Widget<FuzzyClockConfig>;
