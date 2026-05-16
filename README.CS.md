@@ -249,6 +249,10 @@ Server akceptuje také parametry `deck_image_width` a `deck_image_height`. Braii
 
 ---
 
+> ⚠️ **Bezpečnostní upozornění:** Widget (ať built-in, custom `.tsx` nebo NPM plugin) je spouštěn jako plnohodnotný Node.js kód. Instalujte pouze widgety, jejichž kód jste si přečetli nebo jejichž autorovi důvěřujete.
+
+---
+
 ## Vestavěné widgety
 
 Vestavěné widgety jsou součástí serveru. V `config.yaml` se používají přes `type`.
@@ -361,6 +365,7 @@ Ukázka:
 server:
   port: 3000
   host: 0.0.0.0
+  debug: false # true zapne /health, /debug/:widgetId a ?refresh=1
   # authToken: "${WIDGET_AUTH_TOKEN}"   # volitelný Bearer token
   fonts:
     - family: Inter
@@ -749,7 +754,7 @@ Příklad odpovědi:
 
 ### `GET /health`
 
-Vrátí healthcheck a základní statistiky cache.
+Dostupný pouze při `server.debug: true`. Vrátí healthcheck a základní statistiky cache.
 
 ```json
 {
@@ -765,7 +770,7 @@ Vrátí healthcheck a základní statistiky cache.
 
 ### `GET /debug/:widgetId`
 
-Vrátí JSON s informacemi užitečnými při ladění widgetu:
+Dostupný pouze při `server.debug: true`. Vrátí JSON s informacemi užitečnými při ladění widgetu:
 
 - vstupní props,
 - parsovaný `RenderRequest`,
@@ -773,6 +778,10 @@ Vrátí JSON s informacemi užitečnými při ladění widgetu:
 - informace o výsledném elementu.
 
 Tento endpoint se hodí ve chvíli, kdy se widget vykresluje jinak, než očekáváš, nebo když chceš ověřit hodnoty předané do komponenty.
+
+### `?refresh=1`
+
+Obejití cache je dostupné pouze při `server.debug: true`. V produkčním režimu (`debug: false`) je parametr ignorován.
 
 ### Autentizace
 

@@ -3,6 +3,7 @@
 server:
   port: 3000
   host: 0.0.0.0
+  debug: false # true enables /health, /debug/:widgetId and ?refresh=1
   # Optional authentication token (use environment variable)
   # authToken: "${WIDGET_TOKEN}"
 

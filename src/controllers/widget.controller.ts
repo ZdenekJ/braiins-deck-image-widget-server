@@ -1,6 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import type { RenderService } from "../services/render.service.js";
-import { parseRenderRequest } from "../types.js";
+import { parseRenderRequest, normalizeFormat } from "../types.js";
 import { getAllWidgetIds, getWidget, getWidgetInfo } from "../loader.js";
 import { getCacheStats, CacheStats } from "../cache.js";
 
@@ -10,19 +10,25 @@ const getStats = getCacheStats;
 export class WidgetController {
   private renderService: RenderService;
   private config: any;
+  private debug: boolean;
 
   constructor(renderService: RenderService, config: any) {
     this.renderService = renderService;
     this.config = config;
+    this.debug = config.server.debug === true;
   }
 
   /**
    * GET /health
    */
   async healthCheck(req: FastifyRequest, reply: FastifyReply) {
+      if (!this.debug) {
+        return reply.status(404).send({ error: "Not found" });
+      }
+
       const stats = getStats();
       const widgets = getAllWidgetIds();
-      
+
       return {
         status: "ok",
         uptime: process.uptime(),
@@ -65,10 +71,15 @@ export class WidgetController {
         // Parse request
         const renderRequest = parseRenderRequest(
             widgetId,
-            format === "jpeg" ? "jpg" : (format as "png" | "jpg"),
+            normalizeFormat(format),
             req.query,
             this.config.defaults
         );
+
+        // refresh=1 is only honoured in debug mode
+        if (!this.debug) {
+            renderRequest.refresh = false;
+        }
 
         // Render via service
         const result = await this.renderService.renderWidget(renderRequest);
@@ -95,28 +106,17 @@ export class WidgetController {
 
         // Try to render error image
         try {
-            // Best effort to get dimensions
-            const width = parseInt(req.query.width || "638");
-            const height = parseInt(req.query.height || "238");
-            
-            // We need to construct a partial render request or just pass manual dims
-            // But renderError needs a proper RenderRequest object in my previous design? 
-            // Let's modify service to be more flexible or mock it here.
-            // Actually, let's try to parse it again or use defaults.
-            
-            // Simplified error rendering uses just text + dims
             const errorBuffer = await this.renderService.renderError(
                 error.message || "Unknown error",
                 {
-                    // Fallback RenderRequest-like object
                     widgetId,
-                    size: "m", // Fallback
-                    width: isNaN(width) ? 638 : width,
-                    height: isNaN(height) ? 238 : height,
-                    format: (format === "jpeg" ? "jpg" : format) as "png" | "jpg",
+                    size: "m",
+                    width: 638,
+                    height: 238,
+                    format: normalizeFormat(format),
                     theme: "dark",
-                    locale: "en",
-                    tz: "UTC"
+                    locale: "cs-CZ",
+                    tz: "Europe/Prague",
                 }
             );
             return reply.type("image/png").send(errorBuffer);
@@ -140,6 +140,10 @@ export class WidgetController {
     }>,
     reply: FastifyReply
   ) {
+    if (!this.debug) {
+      return reply.status(404).send({ error: "Not found" });
+    }
+
     const { widgetId } = req.params;
 
     const loaded = getWidget(widgetId);

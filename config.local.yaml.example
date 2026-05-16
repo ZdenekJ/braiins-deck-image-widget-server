@@ -21,6 +21,7 @@ server:
   port: 80
   host: 127.0.0.1
   authToken: "${WIDGET_TOKEN}" # Use environment variable
+  debug: false # true enables /health, /debug/:widgetId and ?refresh=1
 
   # Override fonts - array of fonts (completely replaces base fonts)
   fonts:

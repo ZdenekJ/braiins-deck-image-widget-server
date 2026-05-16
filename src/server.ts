@@ -45,8 +45,14 @@ if (config.server.authToken) {
 // Routes
 app.get("/health", widgetController.healthCheck.bind(widgetController));
 app.get("/widgets", widgetController.listWidgets.bind(widgetController));
-app.get("/debug/:widgetId", widgetController.debugWidget.bind(widgetController));
-app.get("/widget/:widgetId.:format", widgetController.renderWidget.bind(widgetController));
+app.get(
+  "/debug/:widgetId",
+  widgetController.debugWidget.bind(widgetController),
+);
+app.get(
+  "/widget/:widgetId.:format",
+  widgetController.renderWidget.bind(widgetController),
+);
 
 // Start server
 const start = async () => {
@@ -55,16 +61,15 @@ const start = async () => {
       port: config.server.port,
       host: config.server.host,
     });
-    
+
     const address = `http://${config.server.host}:${config.server.port}`;
     app.log.info(`Server listening on ${address}`);
-    
+
     // Log helpful info (using console.log for visibility in terminal)
     console.log(`\nExample URLs:`);
-    console.log(`  ${address}/widget/clock_main.png?size=m`);
+    console.log(`  ${address}/widget/date.png`);
     console.log(`  ${address}/health`);
     console.log(`  ${address}/widgets`);
-    
   } catch (err) {
     app.log.error(err);
     process.exit(1);

@@ -102,3 +102,31 @@ export function getCenteredContainerStyle(
     padding: getStandardPadding(size),
   };
 }
+
+/**
+ * Absolute-positioned warning banner for mock/fallback data.
+ * Requires the parent container to have `position: "relative"`.
+ */
+export function getMockDataWarningStyle(size: DeckSize, theme: "dark" | "light"): CSSProperties {
+  const colors = getThemeColors(theme);
+  const sizeStyles: Record<DeckSize, CSSProperties> = {
+    s:  { fontSize: "16px", padding: "2px 4px" },
+    m:  { fontSize: "20px", padding: "3px 6px" },
+    l:  { fontSize: "24px", padding: "4px 8px" },
+    fs: { fontSize: "28px", padding: "5px 10px" },
+  };
+  return {
+    position: "absolute",
+    top: "0",
+    left: "0",
+    right: "0",
+    background: colors.error,
+    color: "#ffffff",
+    fontWeight: "700",
+    textAlign: "center",
+    zIndex: "1000",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    ...sizeStyles[size],
+  };
+}

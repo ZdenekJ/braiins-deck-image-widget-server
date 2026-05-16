@@ -17,19 +17,20 @@ export const DECK_SIZES = {
 
 export type DeckSize = keyof typeof DECK_SIZES;
 
-export interface WidgetProps<TConfig = any> {
+export interface WidgetProps<TConfig = any, TData = any> {
   width: number; // From DECK_SIZES
   height: number; // From DECK_SIZES
   config: TConfig;
+  data?: TData; // Pre-fetched result of fetchData, if exported
   theme: "dark" | "light";
   locale: string;
   tz: string;
 }
 
-export interface Widget<TConfig = any> {
-  component: (props: WidgetProps<TConfig>) => Promise<ReactElement | string>;
+export interface Widget<TConfig = any, TData = any> {
+  component: (props: WidgetProps<TConfig, TData>) => Promise<ReactElement | string>;
   cacheTtl?: number; // Cache TTL in seconds
-  fetchData?: (config: TConfig) => Promise<any>;
+  fetchData?: (config: TConfig) => Promise<TData>;
 }
 
 export interface RenderRequest {
@@ -42,6 +43,37 @@ export interface RenderRequest {
   locale: string;
   tz: string;
   refresh?: boolean;
+}
+
+const VALID_THEMES = ["dark", "light"] as const;
+const DEFAULT_TZ = "Europe/Prague";
+const DEFAULT_LOCALE = "cs-CZ";
+
+function parseTheme(value: string | undefined): "dark" | "light" {
+  if (value && (VALID_THEMES as readonly string[]).includes(value)) {
+    return value as "dark" | "light";
+  }
+  return "dark";
+}
+
+function parseTimezone(value: string | undefined): string {
+  const tz = value || DEFAULT_TZ;
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    return DEFAULT_TZ;
+  }
+}
+
+function parseLocale(value: string | undefined): string {
+  const locale = value || DEFAULT_LOCALE;
+  try {
+    Intl.DateTimeFormat(locale);
+    return locale;
+  } catch {
+    return DEFAULT_LOCALE;
+  }
 }
 
 export function parseRenderRequest(
@@ -62,8 +94,19 @@ export function parseRenderRequest(
   let height: number;
   let size: DeckSize;
 
-  // If both custom dimensions are provided, use them
-  if (customWidth && customHeight && customWidth > 0 && customHeight > 0) {
+  const MAX_DIMENSION = 2560;
+
+  // If both custom dimensions are provided, validate and use them
+  if (customWidth !== null && customHeight !== null) {
+    if (
+      customWidth <= 0 || customHeight <= 0 ||
+      customWidth > MAX_DIMENSION || customHeight > MAX_DIMENSION ||
+      !Number.isFinite(customWidth) || !Number.isFinite(customHeight)
+    ) {
+      throw new Error(
+        `Invalid dimensions: ${customWidth}x${customHeight}. Both values must be between 1 and ${MAX_DIMENSION}.`
+      );
+    }
     width = customWidth;
     height = customHeight;
     // Find closest matching size for cache key purposes
@@ -91,9 +134,9 @@ export function parseRenderRequest(
     width,
     height,
     format,
-    theme: query.theme || defaults.theme || "dark",
-    locale: query.locale || defaults.locale || "cs-CZ",
-    tz: query.tz || defaults.tz || "Europe/Prague",
+    theme: parseTheme(query.theme ?? defaults.theme),
+    locale: parseLocale(query.locale ?? defaults.locale),
+    tz: parseTimezone(query.tz ?? defaults.tz),
     refresh: query.refresh === "1" || query.refresh === "true",
   };
 }
@@ -149,4 +192,8 @@ export function h(type: any, props: any, ...children: any[]): ReactElement {
 
 export function Fragment(props: { children: any }): ReactElement {
   return props.children;
+}
+
+export function normalizeFormat(format: string): "png" | "jpg" {
+  return format === "jpeg" ? "jpg" : (format as "png" | "jpg");
 }

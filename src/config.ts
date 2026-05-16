@@ -17,6 +17,7 @@ export interface ServerConfig {
   port: number;
   host: string;
   authToken?: string;
+  debug: boolean;
   fonts?: FontEntry[]; // Array of font configurations
 }
 
@@ -300,6 +301,7 @@ export function loadConfig(configPath?: string): Config {
       port: mergedServer.port || 3000,
       host: mergedServer.host || "0.0.0.0",
       authToken: mergedServer.authToken,
+      debug: mergedServer.debug === true,
       fonts,
     },
     defaults: {

@@ -249,6 +249,10 @@ The server also accepts `deck_image_width` and `deck_image_height` parameters. B
 
 ---
 
+> ⚠️ **Security notice:** A widget (whether built-in, custom `.tsx`, or NPM plugin) runs as full Node.js code. Only install widgets whose code you have read or whose author you trust.
+
+---
+
 ## Built-in widgets
 
 Built-in widgets are included with the server. They are used in `config.yaml` via the `type` field.
@@ -361,6 +365,7 @@ Example:
 server:
   port: 3000
   host: 0.0.0.0
+  debug: false # true enables /health, /debug/:widgetId and ?refresh=1
   # authToken: "${WIDGET_AUTH_TOKEN}"   # optional Bearer token
   fonts:
     - family: Inter
@@ -749,7 +754,7 @@ Example response:
 
 ### `GET /health`
 
-Returns a health check and basic cache statistics.
+Available only when `server.debug: true`. Returns a health check and basic cache statistics.
 
 ```json
 {
@@ -765,7 +770,7 @@ Returns a health check and basic cache statistics.
 
 ### `GET /debug/:widgetId`
 
-Returns JSON with information useful when debugging a widget:
+Available only when `server.debug: true`. Returns JSON with information useful when debugging a widget:
 
 - input props,
 - parsed `RenderRequest`,
@@ -773,6 +778,10 @@ Returns JSON with information useful when debugging a widget:
 - information about the resulting element.
 
 This endpoint is useful when a widget renders differently than expected, or when you want to verify the values passed to the component.
+
+### `?refresh=1`
+
+Cache bypass is available only when `server.debug: true`. In production mode (`debug: false`) the parameter is ignored.
 
 ### Authentication
 

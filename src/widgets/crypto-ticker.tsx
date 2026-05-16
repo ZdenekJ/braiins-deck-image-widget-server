@@ -1,6 +1,6 @@
 import type { Widget, WidgetProps, DeckSize } from "../types.js";
 import { getDeckSize } from "../types.js";
-import { getThemeColors } from "../styles/common.js";
+import { getThemeColors, getMockDataWarningStyle } from "../styles/common.js";
 
 interface CryptoConfig {
   coin: string; // BTC, ETH, etc.
@@ -189,35 +189,6 @@ function getLastUpdatedStyle(size: DeckSize, theme: string): CSSProperties {
   return { ...base, ...sizeStyles[size] };
 }
 
-function getWarningBannerStyle(size: DeckSize, theme: string): CSSProperties {
-  const colors = getThemeColors(theme as "dark" | "light");
-
-  const base = {
-    position: "absolute",
-    top: "0",
-    left: "0",
-    right: "0",
-    background: colors.error,
-    color: "#ffffff",
-    padding: "4px 8px",
-    fontSize: "20px",
-    fontWeight: "700",
-    textAlign: "center",
-    zIndex: "1000",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  };
-
-  const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "16px", padding: "2px 4px" },
-    m: { fontSize: "20px", padding: "3px 6px" },
-    l: { fontSize: "24px", padding: "4px 8px" },
-    fs: { fontSize: "28px", padding: "5px 10px" },
-  };
-
-  return { ...base, ...sizeStyles[size] };
-}
-
 // ============================================================================
 // DATA FETCHING
 // ============================================================================
@@ -264,7 +235,7 @@ async function fetchCryptoData(config: CryptoConfig): Promise<CryptoData> {
     // Use /coins/markets endpoint to get 1h, 24h, 7d changes
     const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=${fiatLower}&ids=${coinId}&price_change_percentage=1h,24h,7d`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
 
     if (!response.ok) {
       console.error(
@@ -391,12 +362,12 @@ function formatLastUpdated(
 // MAIN WIDGET COMPONENT
 // ============================================================================
 
-async function CryptoTickerWidget(props: WidgetProps<CryptoConfig>) {
-  const { width, height, config, theme, locale, tz } = props;
+async function CryptoTickerWidget(props: WidgetProps<CryptoConfig, CryptoData>) {
+  const { width, height, config, data, theme, locale, tz } = props;
   const { fiat = "USD", showVolume = false, showChange = "24h" } = config;
 
-  // Fetch crypto data
-  const crypto = await fetchCryptoData(config);
+  // Use pre-fetched data from fetchData; fall back to mock if unavailable
+  const crypto = data ?? MOCK_CRYPTO;
 
   // Determine deck size
   const size = getDeckSize(width, height);
@@ -410,7 +381,7 @@ async function CryptoTickerWidget(props: WidgetProps<CryptoConfig>) {
   const changeLabelStyle = getChangeLabelStyle(size, theme);
   const volumeStyle = getVolumeStyle(size, theme);
   const lastUpdatedStyle = getLastUpdatedStyle(size, theme);
-  const warningStyle = getWarningBannerStyle(size, theme);
+  const warningStyle = getMockDataWarningStyle(size, theme as "dark" | "light");
 
   // Build children array
   const children: any[] = [];
@@ -575,4 +546,5 @@ async function CryptoTickerWidget(props: WidgetProps<CryptoConfig>) {
 export default {
   component: CryptoTickerWidget,
   cacheTtl: 60, // 1 minute cache
-} as Widget<CryptoConfig>;
+  fetchData: fetchCryptoData,
+} as Widget<CryptoConfig, CryptoData>;

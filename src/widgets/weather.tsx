@@ -1,6 +1,6 @@
 import type { Widget, WidgetProps, DeckSize } from "../types.js";
 import { getDeckSize } from "../types.js";
-import { getThemeColors } from "../styles/common.js";
+import { getThemeColors, getMockDataWarningStyle } from "../styles/common.js";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { fileURLToPath } from "url";
@@ -199,35 +199,6 @@ function getDetailStyle(size: DeckSize, theme: string): CSSProperties {
   return { ...base, ...sizeStyles[size] };
 }
 
-function getWarningBannerStyle(size: DeckSize, theme: string): CSSProperties {
-  const colors = getThemeColors(theme as "dark" | "light");
-
-  const base = {
-    position: "absolute",
-    top: "0",
-    left: "0",
-    right: "0",
-    background: colors.error,
-    color: "#ffffff",
-    padding: "4px 8px",
-    fontSize: "11px",
-    fontWeight: "700",
-    textAlign: "center",
-    zIndex: "1000",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-  };
-
-  const sizeStyles: Record<DeckSize, CSSProperties> = {
-    s: { fontSize: "16px", padding: "2px 4px" },
-    m: { fontSize: "20px", padding: "3px 6px" },
-    l: { fontSize: "24px", padding: "4px 8px" },
-    fs: { fontSize: "28px", padding: "5px 10px" },
-  };
-
-  return { ...base, ...sizeStyles[size] };
-}
-
 // Map OpenWeatherMap icon codes to Meteocons icon names
 const weatherIconMap: Record<string, string> = {
   // Jasno (Clear sky)
@@ -351,7 +322,7 @@ async function fetchWeatherData(
       const lang = getWeatherLang(locale);
       const url = `https://api.openweathermap.org/data/2.5/weather?q=${cityQuery}&appid=${apiKey}&units=${units}&lang=${lang}`;
 
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
 
       if (response.ok) {
         const data = (await response.json()) as any;
@@ -427,7 +398,7 @@ async function WeatherWidget(props: WidgetProps<WeatherConfig>) {
   const cityStyle = getCityStyle(size);
   const conditionStyle = getConditionStyle(size, theme);
   const detailStyle = getDetailStyle(size, theme);
-  const warningStyle = getWarningBannerStyle(size, theme);
+  const warningStyle = getMockDataWarningStyle(size, theme as "dark" | "light");
 
   // Build JSX structure with pixel-perfect styles
   return {

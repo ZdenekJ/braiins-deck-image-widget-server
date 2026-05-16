@@ -207,6 +207,7 @@ async function fetchEntityState(
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
+      signal: AbortSignal.timeout(5000),
     });
 
     if (!response.ok) {
@@ -247,24 +248,15 @@ async function fetchAllEntities(
 // MAIN WIDGET COMPONENT
 // ============================================================================
 
-async function HomeAssistantWidget(props: WidgetProps<HomeAssistantConfig>) {
-  const { width, height, config, theme } = props;
-  const { title, entities } = config;
+async function HomeAssistantWidget(props: WidgetProps<HomeAssistantConfig, EntityState[]>) {
+  const { width, height, config, data, theme } = props;
+  const { title } = config;
 
-  // Get HA credentials from config or environment
-  const host =
-    config.host || process.env.HA_HOST || "http://homeassistant.local:8123";
-  const token = config.token || process.env.HA_TOKEN || "";
-
-  if (!token) {
-    console.warn("No Home Assistant token provided in config or HA_TOKEN env");
-  }
+  // Use pre-fetched data from fetchData; fall back to empty array if unavailable
+  const entityStates = data ?? [];
 
   // Determine deck size
   const size = getDeckSize(width, height);
-
-  // Fetch all entity states
-  const entityStates = await fetchAllEntities(entities, host, token);
 
   // Get styles for this size
   const containerStyle = getContainerStyle(theme);
@@ -383,4 +375,12 @@ async function HomeAssistantWidget(props: WidgetProps<HomeAssistantConfig>) {
 export default {
   component: HomeAssistantWidget,
   cacheTtl: 30, // Cache for 30 seconds (HA data changes frequently)
-} as Widget<HomeAssistantConfig>;
+  fetchData: async (config: HomeAssistantConfig): Promise<EntityState[]> => {
+    const host = config.host || process.env.HA_HOST || "http://homeassistant.local:8123";
+    const token = config.token || process.env.HA_TOKEN || "";
+    if (!token) {
+      console.warn("No Home Assistant token provided in config or HA_TOKEN env");
+    }
+    return fetchAllEntities(config.entities, host, token);
+  },
+} as Widget<HomeAssistantConfig, EntityState[]>;

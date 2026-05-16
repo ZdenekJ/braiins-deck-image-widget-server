@@ -8,6 +8,7 @@ import {
 } from "../cache.js";
 import { renderToImage, renderErrorImage } from "../renderer.js";
 import type { RenderRequest, WidgetProps, Widget } from "../types.js";
+import { normalizeFormat } from "../types.js";
 import { getWidget, getAllWidgetIds } from "../loader.js";
 
 interface RenderResult {
@@ -48,14 +49,20 @@ export class RenderService {
     // 3. Prepare Props & Data
     const props = await this.prepareProps(req, widget, widgetConfig);
 
-    // 4. Render Widget Component
-    const componentResult = await widget.component(props);
+    // 4. Render Widget Component (with timeout)
+    const RENDER_TIMEOUT_MS = 10_000;
+    const componentResult = await Promise.race([
+      widget.component(props),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Widget render timed out")), RENDER_TIMEOUT_MS)
+      ),
+    ]);
 
     // 5. Render to Image
     const buffer = await renderToImage(componentResult, {
       width: req.width,
       height: req.height,
-      format: req.format === "jpeg" ? "jpg" : req.format,
+      format: normalizeFormat(req.format),
     });
 
     // 6. Cache Result
@@ -68,11 +75,10 @@ export class RenderService {
    * Render error image using the same renderer
    */
   async renderError(message: string, req: RenderRequest): Promise<Buffer> {
-    const format = req.format === "jpeg" ? "jpg" : req.format;
     return renderErrorImage(message, {
       width: req.width,
       height: req.height,
-      format,
+      format: normalizeFormat(req.format),
     });
   }
 
@@ -84,15 +90,15 @@ export class RenderService {
     widget: Widget,
     widgetConfig: any
   ): Promise<WidgetProps> {
-    // Determine data cache behavior
-    if (widget.fetchData) {
-      await this.resolveData(req, widget, widgetConfig);
-    }
+    const data = widget.fetchData
+      ? await this.resolveData(req, widget, widgetConfig)
+      : undefined;
 
     return {
       width: req.width,
       height: req.height,
       config: widgetConfig,
+      data,
       theme: req.theme,
       locale: req.locale,
       tz: req.tz,
@@ -100,14 +106,14 @@ export class RenderService {
   }
 
   /**
-   * Internal: Fetch and cache data
+   * Internal: Fetch and cache data, returns the fetched data
    */
   private async resolveData(
     req: RenderRequest,
     widget: Widget,
     widgetConfig: any
-  ) {
-    if (!widget.fetchData) return;
+  ): Promise<any> {
+    if (!widget.fetchData) return undefined;
 
     const dataCacheKey = generateDataCacheKey(req.widgetId, widgetConfig);
     let data = getCachedData(dataCacheKey);
@@ -117,6 +123,8 @@ export class RenderService {
       data = await widget.fetchData(widgetConfig);
       setCachedData(dataCacheKey, data, widget.cacheTtl);
     }
+
+    return data;
   }
 
   getAvailableWidgets(): string[] {
