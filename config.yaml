@@ -1,0 +1,122 @@
+# BraiinsDeck Widget Server Configuration
+
+server:
+  port: 3000
+  host: 0.0.0.0
+  debug: false # true enables /health, /debug/:widgetId and ?refresh=1
+  # Optional authentication token (use environment variable)
+  # Clients send it as ?token=... in the URL or as "Authorization: Bearer ..." header
+  # authToken: "${WIDGET_AUTH_TOKEN}"
+
+  # Font settings - array of fonts with family, file, weight, and style
+  # First font in the list is the "primary" font used by default
+  fonts:
+    - family: Inter
+      file: fonts/Inter-Regular.ttf
+      weight: 400 # normal
+    - family: Inter
+      file: fonts/Inter-Bold.ttf
+      weight: 700 # bold
+    - family: Inter
+      file: fonts/Inter-Black.ttf
+      weight: 900 # black
+    # You can add more fonts here
+    # Example: Add more weights of the same font
+    # - family: Inter
+    #   file: fonts/Inter-Bold.ttf
+    #   weight: 700 # bold
+    # - family: Inter
+    #   file: fonts/Inter-Light.ttf
+    #   weight: 300 # light
+    # Example: Add a different font family
+    # - family: "Roboto Mono"
+    #   file: fonts/RobotoMono-Regular.ttf
+    #   weight: 400
+
+defaults:
+  locale: cs-CZ
+  tz: Europe/Prague
+  theme: dark
+  size: m # Default size (s, m, l, fs)
+
+widgets:
+  # Tier 1: Built-in Widgets
+  - id: fuzzy-clock
+    type: fuzzy-clock
+    config:
+    #  showDigital: true # Optional - show digital time below fuzzy text
+
+  - id: date-default
+    type: date
+    config:
+      # Default: "pátek 10. leden 2026" (cs-CZ locale from defaults)
+
+  - id: date
+    type: date
+    config:
+      weekday: long
+      month: long
+      showWeekNumber: true
+
+  - id: date-eng
+    type: date
+    config:
+      month: 2-digit
+      showWeekNumber: true
+      locale: en-US
+
+  - id: weather-zdar
+    type: weather
+    config:
+      city: Žďár nad Sázavou
+      country: CZ
+      apiKey: "${OPENWEATHER_API_KEY}" # Optional - uses mock data if not set
+      units: metric
+
+  - id: weather-ny
+    type: weather
+    config:
+      city: New York
+      country: US
+      apiKey: "${OPENWEATHER_API_KEY}" # Optional - uses mock data if not set
+      units: imperial
+
+  - id: btc-price
+    type: crypto-ticker
+    config:
+      coin: BTC
+      fiat: USD
+      showVolume: true
+      showChange: all # Show 1h, 24h, 7d changes
+
+  - id: eth-price
+    type: crypto-ticker
+    config:
+      coin: ETH
+      fiat: EUR
+      showVolume: false
+      showChange: 24h # Show only 24h change (default)
+
+  - id: ha-balkon
+    type: homeassistant
+    config:
+      title: "Teploměr balkon"
+      entities:
+        - sensor.venkovni_teplota
+  #       - sensor.venkovni_vlhkost
+#        - sensor.venkovni_tlak
+
+# Tier 2: Custom widgets (uncomment to use)
+#
+# - id: my_custom_widget
+#   file: ./widgets/my-widget.tsx
+#   config:
+#     title: "Custom Widget"
+#     value: 42
+
+# Tier 3: NPM plugins (uncomment to use)
+#
+# - id: advanced_widget
+#   plugin: "@someone/braiins-widget-xyz"
+#   config:
+#     option: value
