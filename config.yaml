@@ -5,7 +5,8 @@ server:
   host: 0.0.0.0
   debug: false # true enables /health, /debug/:widgetId and ?refresh=1
   # Optional authentication token (use environment variable)
-  # authToken: "${WIDGET_TOKEN}"
+  # Clients send it as ?token=... in the URL or as "Authorization: Bearer ..." header
+  # authToken: "${WIDGET_AUTH_TOKEN}"
 
   # Font settings - array of fonts with family, file, weight, and style
   # First font in the list is the "primary" font used by default

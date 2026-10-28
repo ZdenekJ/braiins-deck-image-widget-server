@@ -42,11 +42,16 @@ export interface Config {
   widgets: WidgetConfig[];
 }
 
+// Names of ${VAR} references that were not set in the environment
+const missingEnvVars = new Set<string>();
+
 // Expand environment variables in strings (${VAR} format)
 function expandEnvVars(obj: any): any {
   if (typeof obj === "string") {
     return obj.replace(/\$\{([^}]+)\}/g, (_, varName) => {
-      return process.env[varName] || "";
+      const value = process.env[varName];
+      if (!value) missingEnvVars.add(varName);
+      return value || "";
     });
   }
   if (Array.isArray(obj)) {
@@ -129,18 +134,20 @@ function mergeWidgets(
 
 /**
  * Load and parse a YAML config file
+ * Returns null if the file does not exist; throws if it exists but cannot be read or parsed
  */
 function loadYamlFile(path: string): any | null {
+  if (!existsSync(path)) {
+    return null;
+  }
   try {
-    if (!existsSync(path)) {
-      return null;
-    }
     const fileContent = readFileSync(path, "utf-8");
     const parsed = parse(fileContent);
     return expandEnvVars(parsed);
   } catch (error) {
-    console.error(`Failed to load config from ${path}:`, error);
-    return null;
+    throw new Error(
+      `Failed to load config from ${path}: ${error instanceof Error ? error.message : error}`
+    );
   }
 }
 
@@ -273,6 +280,23 @@ export function loadConfig(configPath?: string): Config {
     mergedServer = baseConfig.server;
     mergedDefaults = baseConfig.defaults;
     mergedWidgets = baseConfig.widgets;
+  }
+
+  if (missingEnvVars.size > 0) {
+    console.warn(
+      `\n⚠️  Environment variable(s) not set, replaced with empty string: ${[...missingEnvVars].join(", ")}`
+    );
+  }
+
+  // authToken present in config but empty (e.g. unset env var) would silently disable auth
+  if (
+    "authToken" in mergedServer &&
+    (typeof mergedServer.authToken !== "string" || mergedServer.authToken === "")
+  ) {
+    throw new Error(
+      "server.authToken is configured but empty (is its environment variable set?). " +
+        "Set the token, or comment out authToken to disable authentication."
+    );
   }
 
   // Default fonts if none provided

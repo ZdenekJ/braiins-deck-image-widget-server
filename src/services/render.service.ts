@@ -17,8 +17,33 @@ interface RenderResult {
   fromCache: boolean;
 }
 
+// Max time for fetchData + component together
+const RENDER_TIMEOUT_MS = 10_000;
+
+export class WidgetNotFoundError extends Error {
+  constructor(widgetId: string) {
+    super(`Widget '${widgetId}' not found`);
+    this.name = "WidgetNotFoundError";
+  }
+}
+
+// Reject if the promise doesn't settle in time; always clears the timer
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export class RenderService {
   private config: any;
+  // In-flight fetchData calls by data cache key, so concurrent requests share one fetch
+  private pendingFetches = new Map<string, Promise<any>>();
 
   constructor(config: any) {
     this.config = config;
@@ -42,21 +67,19 @@ export class RenderService {
     // 2. Load Widget
     const loaded = getWidget(req.widgetId);
     if (!loaded) {
-      throw new Error(`Widget '${req.widgetId}' not found`);
+      throw new WidgetNotFoundError(req.widgetId);
     }
     const { widget, config: widgetConfig } = loaded;
 
-    // 3. Prepare Props & Data
-    const props = await this.prepareProps(req, widget, widgetConfig);
-
-    // 4. Render Widget Component (with timeout)
-    const RENDER_TIMEOUT_MS = 10_000;
-    const componentResult = await Promise.race([
-      widget.component(props),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Widget render timed out")), RENDER_TIMEOUT_MS)
-      ),
-    ]);
+    // 3. Prepare Props & Data, 4. Render Widget Component (with timeout)
+    const componentResult = await withTimeout(
+      (async () => {
+        const props = await this.prepareProps(req, widget, widgetConfig);
+        return widget.component(props);
+      })(),
+      RENDER_TIMEOUT_MS,
+      `Widget '${req.widgetId}' timed out after ${RENDER_TIMEOUT_MS / 1000}s`
+    );
 
     // 5. Render to Image
     const buffer = await renderToImage(componentResult, {
@@ -74,18 +97,21 @@ export class RenderService {
   /**
    * Render error image using the same renderer
    */
-  async renderError(message: string, req: RenderRequest): Promise<Buffer> {
+  async renderError(
+    message: string,
+    options: Pick<RenderRequest, "width" | "height" | "format">
+  ): Promise<Buffer> {
     return renderErrorImage(message, {
-      width: req.width,
-      height: req.height,
-      format: normalizeFormat(req.format),
+      width: options.width,
+      height: options.height,
+      format: normalizeFormat(options.format),
     });
   }
 
   /**
-   * Internal: Prepare props and fetch data if needed
+   * Prepare props and fetch data if needed (also used by the debug endpoint)
    */
-  private async prepareProps(
+  async prepareProps(
     req: RenderRequest,
     widget: Widget,
     widgetConfig: any
@@ -115,16 +141,32 @@ export class RenderService {
   ): Promise<any> {
     if (!widget.fetchData) return undefined;
 
-    const dataCacheKey = generateDataCacheKey(req.widgetId, widgetConfig);
-    let data = getCachedData(dataCacheKey);
+    const context = { locale: req.locale, tz: req.tz };
+    const dataCacheKey = generateDataCacheKey(req.widgetId, widgetConfig, context);
 
-    if (!data || req.refresh) {
-      console.log(`Fetching data for ${req.widgetId}...`);
-      data = await widget.fetchData(widgetConfig);
-      setCachedData(dataCacheKey, data, widget.cacheTtl);
+    if (!req.refresh) {
+      const cached = getCachedData(dataCacheKey);
+      if (cached !== undefined) return cached;
     }
 
-    return data;
+    const pending = this.pendingFetches.get(dataCacheKey);
+    if (pending) return pending;
+
+    console.log(`Fetching data for ${req.widgetId}...`);
+    // Own timeout so a hung fetch is released from pendingFetches and can be retried
+    const fetchPromise = withTimeout(
+      widget.fetchData(widgetConfig, context),
+      RENDER_TIMEOUT_MS,
+      `fetchData for '${req.widgetId}' timed out after ${RENDER_TIMEOUT_MS / 1000}s`
+    )
+      .then((data) => {
+        setCachedData(dataCacheKey, data, widget.cacheTtl);
+        return data;
+      })
+      .finally(() => this.pendingFetches.delete(dataCacheKey));
+
+    this.pendingFetches.set(dataCacheKey, fetchPromise);
+    return fetchPromise;
   }
 
   getAvailableWidgets(): string[] {

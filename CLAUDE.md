@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev        # Development server with hot reload (tsx watch)
-npm run build      # Compile TypeScript to dist/
+npm run build      # Remove stale files from dist/, then compile TypeScript to dist/
 npm run start      # Run compiled server from dist/
 npm run type-check # Type-check without emitting files
 ```
@@ -48,7 +48,7 @@ Every widget module must export a default `Widget` object:
 export default {
   component: async (props: WidgetProps) => ReactElement | string,
   cacheTtl?: number,       // seconds; undefined uses node-cache default (60s)
-  fetchData?: async (config) => data,  // result passed as props.data
+  fetchData?: async (config, { locale, tz }) => data,  // result passed as props.data; throw on failure (not cached)
 } as Widget<MyConfig>;
 ```
 
@@ -75,8 +75,8 @@ The project uses JSX syntax compiled to `h()` / `Fragment()` calls (configured i
 ### Cache
 
 Two separate `NodeCache` instances in `src/cache.ts`:
-- **Image cache**: keyed by `widgetId|size|format|theme|locale|tz`
-- **Data cache**: keyed by `data:widgetId:<config-json>`
+- **Image cache**: keyed by `widgetId|<width>x<height>|format|theme|locale|tz`
+- **Data cache**: keyed by `data:widgetId:locale|tz:<config-json>`
 
 Both default to 60 s TTL, max 500/200 keys respectively. Widget's `cacheTtl` overrides the TTL per entry.
 

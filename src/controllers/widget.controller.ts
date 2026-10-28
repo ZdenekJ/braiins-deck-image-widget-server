@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import type { RenderService } from "../services/render.service.js";
-import { parseRenderRequest, normalizeFormat } from "../types.js";
+import { WidgetNotFoundError, type RenderService } from "../services/render.service.js";
+import { parseRenderRequest, normalizeFormat, DECK_SIZES } from "../types.js";
+import type { DeckSize, RenderRequest } from "../types.js";
 import { getAllWidgetIds, getWidget, getWidgetInfo } from "../loader.js";
 import { getCacheStats, CacheStats } from "../cache.js";
 
@@ -67,11 +68,14 @@ export class WidgetController {
       });
     }
 
+    const imageFormat = normalizeFormat(format);
+    let renderRequest: RenderRequest | undefined;
+
     try {
         // Parse request
-        const renderRequest = parseRenderRequest(
+        renderRequest = parseRenderRequest(
             widgetId,
-            normalizeFormat(format),
+            imageFormat,
             req.query,
             this.config.defaults
         );
@@ -96,31 +100,29 @@ export class WidgetController {
     } catch (error: any) {
         req.log.error(error);
         
-        // Handle specific errors (e.g. not found)
-        if (error.message.includes("not found")) {
+        if (error instanceof WidgetNotFoundError) {
              return reply.status(404).send({
                 error: error.message,
                 available: this.renderService.getAvailableWidgets(),
             });
         }
 
-        // Try to render error image
+        // Try to render error image in the requested dimensions and format
+        // (falls back to the default size if the request itself couldn't be parsed)
         try {
+            const fallbackSize = DECK_SIZES[this.config.defaults.size as DeckSize] ?? DECK_SIZES.m;
             const errorBuffer = await this.renderService.renderError(
-                error.message || "Unknown error",
+                error?.message || "Unknown error",
                 {
-                    widgetId,
-                    size: "m",
-                    width: 638,
-                    height: 238,
-                    format: normalizeFormat(format),
-                    theme: "dark",
-                    locale: "cs-CZ",
-                    tz: "Europe/Prague",
+                    width: renderRequest?.width ?? fallbackSize.width,
+                    height: renderRequest?.height ?? fallbackSize.height,
+                    format: imageFormat,
                 }
             );
-            return reply.type("image/png").send(errorBuffer);
-        
+            return reply
+                .type(imageFormat === "png" ? "image/png" : "image/jpeg")
+                .send(errorBuffer);
+
         } catch (renderErr) {
             return reply.status(500).send({
                 error: "Failed to render widget",
@@ -164,15 +166,12 @@ export class WidgetController {
         
         const { widget, config: widgetConfig } = loaded;
 
-        // Manually running logic similar to service to expose internals
-        const props = {
-            width: renderRequest.width,
-            height: renderRequest.height,
-            config: widgetConfig,
-            theme: renderRequest.theme,
-            locale: renderRequest.locale,
-            tz: renderRequest.tz,
-        };
+        // Same props (incl. fetchData result) as a real render, to expose internals
+        const props = await this.renderService.prepareProps(
+            renderRequest,
+            widget,
+            widgetConfig
+        );
 
         const result = await widget.component(props);
 

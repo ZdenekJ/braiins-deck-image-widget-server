@@ -6,7 +6,26 @@ import { RenderService } from "./services/render.service.js";
 import { WidgetController } from "./controllers/widget.controller.js";
 import { setFonts } from "./renderer.js";
 
-const app = Fastify({ logger: true });
+// Hide ?token=... from request URLs in logs
+function maskToken(url: string): string {
+  return url.replace(/([?&]token=)[^&]*/g, "$1***");
+}
+
+const app = Fastify({
+  logger: {
+    serializers: {
+      req(req) {
+        return {
+          method: req.method,
+          url: maskToken(req.url),
+          host: req.host,
+          remoteAddress: req.ip,
+          remotePort: req.socket?.remotePort,
+        };
+      },
+    },
+  },
+});
 
 // Load configuration
 let config: ReturnType<typeof loadConfig>;
@@ -32,12 +51,19 @@ const widgetController = new WidgetController(renderService, config);
 // Initialize widgets on startup
 await initializeWidgets(config.widgets);
 
-// Authentication middleware (optional)
+// Authentication (optional): token via ?token=... (BraiinsDeck can't send headers)
+// or via "Authorization: Bearer ..." header
 if (config.server.authToken) {
+  const expectedToken = config.server.authToken;
   app.addHook("onRequest", async (request, reply) => {
-    const token = request.headers.authorization?.replace("Bearer ", "");
-    if (token !== config.server.authToken) {
-      reply.status(401).send({ error: "Unauthorized" });
+    const header = request.headers.authorization;
+    const headerToken = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
+    const queryToken = (request.query as Record<string, unknown>)?.token;
+    const token =
+      headerToken ?? (typeof queryToken === "string" ? queryToken : undefined);
+
+    if (token !== expectedToken) {
+      return reply.status(401).send({ error: "Unauthorized" });
     }
   });
 }

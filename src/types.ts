@@ -30,7 +30,13 @@ export interface WidgetProps<TConfig = any, TData = any> {
 export interface Widget<TConfig = any, TData = any> {
   component: (props: WidgetProps<TConfig, TData>) => Promise<ReactElement | string>;
   cacheTtl?: number; // Cache TTL in seconds
-  fetchData?: (config: TConfig) => Promise<TData>;
+  fetchData?: (config: TConfig, context: FetchContext) => Promise<TData>;
+}
+
+// Request context passed to fetchData (part of the data cache key)
+export interface FetchContext {
+  locale: string;
+  tz: string;
 }
 
 export interface RenderRequest {
@@ -46,33 +52,42 @@ export interface RenderRequest {
 }
 
 const VALID_THEMES = ["dark", "light"] as const;
+// Last-resort fallbacks, used only if the config defaults are invalid too
+const DEFAULT_THEME = "dark";
 const DEFAULT_TZ = "Europe/Prague";
 const DEFAULT_LOCALE = "cs-CZ";
 
-function parseTheme(value: string | undefined): "dark" | "light" {
-  if (value && (VALID_THEMES as readonly string[]).includes(value)) {
-    return value as "dark" | "light";
+// Return the first candidate (query value, then config default) that passes validation
+function firstValid(
+  candidates: Array<string | undefined>,
+  isValid: (value: string) => boolean,
+  fallback: string
+): string {
+  for (const value of candidates) {
+    if (value && isValid(value)) return value;
   }
-  return "dark";
+  return fallback;
 }
 
-function parseTimezone(value: string | undefined): string {
-  const tz = value || DEFAULT_TZ;
+function isValidTheme(value: string): boolean {
+  return (VALID_THEMES as readonly string[]).includes(value);
+}
+
+function isValidTimezone(value: string): boolean {
   try {
-    Intl.DateTimeFormat(undefined, { timeZone: tz });
-    return tz;
+    Intl.DateTimeFormat(undefined, { timeZone: value });
+    return true;
   } catch {
-    return DEFAULT_TZ;
+    return false;
   }
 }
 
-function parseLocale(value: string | undefined): string {
-  const locale = value || DEFAULT_LOCALE;
+function isValidLocale(value: string): boolean {
   try {
-    Intl.DateTimeFormat(locale);
-    return locale;
+    Intl.DateTimeFormat(value);
+    return true;
   } catch {
-    return DEFAULT_LOCALE;
+    return false;
   }
 }
 
@@ -134,9 +149,9 @@ export function parseRenderRequest(
     width,
     height,
     format,
-    theme: parseTheme(query.theme ?? defaults.theme),
-    locale: parseLocale(query.locale ?? defaults.locale),
-    tz: parseTimezone(query.tz ?? defaults.tz),
+    theme: firstValid([query.theme, defaults.theme], isValidTheme, DEFAULT_THEME) as "dark" | "light",
+    locale: firstValid([query.locale, defaults.locale], isValidLocale, DEFAULT_LOCALE),
+    tz: firstValid([query.tz, defaults.tz], isValidTimezone, DEFAULT_TZ),
     refresh: query.refresh === "1" || query.refresh === "true",
   };
 }

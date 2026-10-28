@@ -1,5 +1,5 @@
 import { fileURLToPath, pathToFileURL } from "url";
-import { dirname, join, resolve } from "path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "path";
 import { existsSync } from "fs";
 import { readdir, writeFile, unlink } from "fs/promises";
 import * as esbuild from "esbuild";
@@ -14,17 +14,39 @@ function toFileURL(path: string): string {
   return pathToFileURL(path).href;
 }
 
+// In production this file runs from dist/; widgets import server helpers as ../src/*.js,
+// which only exist as .ts sources, so redirect them to the compiled dist/*.js files
+const distDir = __dirname;
+const srcDir = join(__dirname, "..", "src");
+
+const srcToDistPlugin: esbuild.Plugin = {
+  name: "src-to-dist",
+  setup(build) {
+    build.onResolve({ filter: /^\.\.?\// }, (args) => {
+      const absPath = resolve(args.resolveDir, args.path);
+      const rel = relative(srcDir, absPath);
+      if (rel.startsWith("..") || isAbsolute(rel)) {
+        return undefined; // Not inside src/ - let esbuild bundle it (e.g. widget helper files)
+      }
+      const distPath = join(distDir, rel.replace(/\.(tsx?|js)$/, "") + ".js");
+      return { path: toFileURL(distPath), external: true };
+    });
+  },
+};
+
 // Transpile .tsx to .js in memory for production mode
 async function transpileTsx(tsxPath: string): Promise<string> {
   try {
     const result = await esbuild.build({
       entryPoints: [tsxPath],
       write: false,
-      bundle: false,
+      bundle: true, // Required for onResolve; npm packages stay external
+      packages: "external",
       format: "esm",
       target: "esnext",
       loader: { ".tsx": "tsx", ".ts": "ts" },
       platform: "node",
+      plugins: [srcToDistPlugin],
     });
 
     if (result.outputFiles && result.outputFiles.length > 0) {
@@ -38,13 +60,34 @@ async function transpileTsx(tsxPath: string): Promise<string> {
   }
 }
 
-// Check if running with tsx (dev mode)
+// Dev mode = this loader itself runs as TypeScript source (tsx), not as compiled dist/*.js
 function isDevMode(): boolean {
-  // Check if tsx is in the process argv or if we're running from src/
-  return (
-    process.argv.some((arg) => arg.includes("tsx")) ||
-    __dirname.includes("src")
+  return import.meta.url.endsWith(".ts");
+}
+
+// Import a widget module; in production, .ts/.tsx files are transpiled with esbuild first
+async function importWidgetModule(modulePath: string): Promise<any> {
+  if (isDevMode() || !/\.tsx?$/.test(modulePath)) {
+    return import(toFileURL(modulePath));
+  }
+
+  const transpiledCode = await transpileTsx(modulePath);
+  // Temp file must live next to the source so relative imports still resolve
+  const tempJsPath = join(
+    dirname(modulePath),
+    `.${basename(modulePath).replace(/\.tsx?$/, "")}.${process.pid}.temp.mjs`
   );
+
+  await writeFile(tempJsPath, transpiledCode, "utf-8");
+  try {
+    return await import(toFileURL(tempJsPath));
+  } finally {
+    try {
+      await unlink(tempJsPath);
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
 }
 
 // Registry of loaded widgets
@@ -117,8 +160,7 @@ async function loadWidget(
       if (!existsSync(customPath)) {
         throw new Error(`Custom widget file not found: ${customPath}`);
       }
-      const customURL = toFileURL(customPath);
-      widgetModule = await import(customURL);
+      widgetModule = await importWidgetModule(customPath);
     }
     // Tier 3: NPM plugins (optional)
     else if (plugin) {
@@ -129,6 +171,10 @@ async function loadWidget(
           `Failed to load NPM plugin '${plugin}'. Make sure it's installed: npm install ${plugin}`
         );
       }
+    } else if (type) {
+      throw new Error(
+        `Unknown widget type '${type}' for widget '${id}'. Available types: ${[...builtInWidgetTypes].sort().join(", ")}`
+      );
     } else {
       throw new Error(
         `Widget '${id}' must specify either 'type', 'file', or 'plugin'`
@@ -162,8 +208,6 @@ async function loadCustomWidgets(): Promise<void> {
     return;
   }
 
-  const devMode = isDevMode();
-
   try {
     const files = await readdir(widgetsDir);
     const widgetFiles = files.filter(
@@ -191,34 +235,7 @@ async function loadCustomWidgets(): Promise<void> {
       }
 
       try {
-        let widgetModule: any;
-
-        // Dev mode: tsx can load .tsx directly
-        if (devMode || file.endsWith(".js")) {
-          const widgetURL = toFileURL(widgetPath);
-          widgetModule = await import(widgetURL);
-        }
-        // Production mode: transpile .tsx with esbuild
-        else if (file.endsWith(".tsx") || file.endsWith(".ts")) {
-          // Transpile to temporary .js file
-          const transpiledCode = await transpileTsx(widgetPath);
-          const tempJsPath = widgetPath.replace(/\.(tsx|ts)$/, ".temp.mjs");
-
-          await writeFile(tempJsPath, transpiledCode, "utf-8");
-
-          try {
-            const tempURL = toFileURL(tempJsPath);
-            widgetModule = await import(tempURL);
-          } finally {
-            // Clean up temp file
-            try {
-              await unlink(tempJsPath);
-            } catch (e) {
-              // Ignore cleanup errors
-            }
-          }
-        }
-
+        const widgetModule = await importWidgetModule(widgetPath);
         const widget: Widget = widgetModule?.default;
 
         if (widget && typeof widget.component === "function") {

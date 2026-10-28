@@ -94,7 +94,7 @@ In this mode the server automatically restarts when code changes.
 For regular use:
 
 ```bash
-npm run build
+npm run build   # removes stale files from dist/, then compiles TypeScript
 npm start
 ```
 
@@ -222,6 +222,9 @@ GET /widget/{widgetId}.{format}?size=...&theme=...&locale=...&tz=...
 | `refresh`           | `1` bypasses the cache for a single request                | –                      |
 | `deck_image_width`  | Custom width in px — BraiinsDeck sends this automatically  | –                      |
 | `deck_image_height` | Custom height in px — BraiinsDeck sends this automatically | –                      |
+| `token`             | Access token, only when `server.authToken` is set          | –                      |
+
+An invalid `theme`, `locale` or `tz` falls back to the value from `defaults`. `deck_image_width` and `deck_image_height` are only used together; if one of them is missing, both are ignored and `size` applies.
 
 ### Examples
 
@@ -245,7 +248,7 @@ BraiinsDeck uses four standard sizes. The server returns these dimensions:
 | `l`  | 638 × 480       | Large – two slots tall and wide |
 | `fs` | 1280 × 480      | Fullscreen                      |
 
-The server also accepts `deck_image_width` and `deck_image_height` parameters. BraiinsDeck sends these automatically. For caching purposes, a custom size is mapped to the nearest standard size.
+The server also accepts `deck_image_width` and `deck_image_height` parameters. BraiinsDeck sends these automatically. Widgets pick their layout from the nearest standard size; the cache stores each exact dimension separately.
 
 ---
 
@@ -290,7 +293,7 @@ Date, optionally with day of week and week number.
 
 ### Weather (`type: weather`)
 
-Current weather from OpenWeatherMap. Without an `apiKey` the widget renders sample data and warns that it is not a real result.
+Current weather from OpenWeatherMap. Without an `apiKey` the widget renders sample data and warns that it is not a real result. With an `apiKey`, a failed request (wrong key, unknown city, network outage) shows an error image with the reason; nothing is cached and the next request retries.
 
 ```yaml
 - id: weather-zdar
@@ -310,13 +313,13 @@ An API key can be obtained at [openweathermap.org](https://openweathermap.org/ap
 
 ### Crypto ticker (`type: crypto-ticker`)
 
-Current cryptocurrency price from CoinGecko. No API key required.
+Current cryptocurrency price from CoinGecko. No API key required. If CoinGecko fails (e.g. rate limit, unknown coin), an error image with the reason is shown; nothing is cached and the next request retries. Coins not in the list below can be given by their CoinGecko ID (e.g. `chainlink`).
 
 ```yaml
 - id: btc-price
   type: crypto-ticker
   config:
-    coin: BTC # BTC, ETH, USDT, BNB, XRP, ADA, DOGE, SOL, DOT, MATIC
+    coin: BTC # BTC, ETH, USDT, BNB, XRP, ADA, DOGE, SOL, DOT, MATIC, POL
     fiat: USD # USD, EUR, CZK, …
     showVolume: true # shows volume
     showChange: all # 1h | 24h | 7d | all  (default 24h)
@@ -333,7 +336,7 @@ Displays the state of one or more entities from Home Assistant.
   type: homeassistant
   config:
     title: "Balcony thermometer"
-    entities:
+    entities: # required, at least one entity
       - sensor.outdoor_temperature
       - sensor.outdoor_humidity
     # host: http://homeassistant.local:8123  # optionally overrides HA_HOST
@@ -366,7 +369,7 @@ server:
   port: 3000
   host: 0.0.0.0
   debug: false # true enables /health, /debug/:widgetId and ?refresh=1
-  # authToken: "${WIDGET_AUTH_TOKEN}"   # optional Bearer token
+  # authToken: "${WIDGET_AUTH_TOKEN}"   # optional, ?token=... or Bearer header
   fonts:
     - family: Inter
       file: fonts/Inter-Regular.ttf
@@ -464,6 +467,8 @@ widgets:
 
 On startup the server prints to the console how the configuration was merged.
 
+If `config.local.yaml` exists but is not valid YAML, the server refuses to start and reports where the error is. It is never silently ignored.
+
 ---
 
 ## Environment variables and `.env`
@@ -479,7 +484,7 @@ A template is in:
 Example `.env`:
 
 ```env
-# Optional Bearer token for API server access
+# Optional access token for the server (see Authentication)
 WIDGET_AUTH_TOKEN=secret-token
 
 # OpenWeatherMap
@@ -499,6 +504,8 @@ widgets:
     config:
       apiKey: "${OPENWEATHER_API_KEY}"
 ```
+
+If a referenced variable is not set, it is replaced with an empty string and the server lists it as a warning on startup.
 
 The `.env` file is in `.gitignore`, so it will not normally end up in the repository.
 
@@ -600,13 +607,13 @@ export default {
 
 ### 3. Fetching external data
 
-If a widget needs data from an external API, it can export a `fetchData` function. The server will call it before rendering and store the result in the data cache.
+If a widget needs data from an external API, it can export a `fetchData` function. The server will call it before rendering and store the result in the data cache. The second argument carries the request's `locale` and `tz`. If `fetchData` throws, nothing is cached and an error image is shown; the next request retries. `fetchData` and the component together must finish within 10 s.
 
 ```ts
 export default {
   component: MyWidget,
   cacheTtl: 300,
-  fetchData: async (config) => {
+  fetchData: async (config, { locale, tz }) => {
     const res = await fetch(`https://api.example.com/${config.symbol}`);
     return res.json();
   },
@@ -637,6 +644,13 @@ widgets:
       title: "Hello"
       value: 42
 ```
+
+#### Imports in a custom widget
+
+A custom widget can import server helpers from `../src/*.js` (e.g. `h`, `getDeckSize`, `getThemeColors`) as well as its own helper files, e.g. `./lib/helpers.ts`.
+
+- `npm run dev` – the file is loaded directly by tsx.
+- `npm start` – the file is transpiled by esbuild on startup; imports from `../src/*.js` are redirected to the compiled `dist/` and the widget's own helper files are bundled in.
 
 ### 5. Testing
 
@@ -695,16 +709,18 @@ Every widget request goes through the rendering pipeline:
 3. `RenderService` checks the image cache.
 4. If there is a ready image in the cache, the server returns it immediately and sets the `X-Cache: HIT` header.
 5. If no image is in the cache, the widget is loaded via `loader.ts`.
-6. If the widget contains `fetchData(config)`, the server calls this function and stores the result in the data cache.
+6. If the widget contains `fetchData(config, { locale, tz })`, the server calls this function and stores the result in the data cache. Concurrent requests for the same data share one call.
 7. The widget component receives `WidgetProps` and returns a JSX-like object `{ type, props }`.
 8. `renderer.ts` passes the result to Satori, which creates an SVG.
 9. Sharp converts the SVG to PNG or JPG.
 10. The finished buffer is stored in the image cache and returned to the client.
 
+Steps 6 and 7 together must finish within 10 seconds. If anything fails (an error in `fetchData` or the component, a timeout, invalid dimensions), the server returns an **error image** with the reason, in the requested dimensions and format. Errors are not cached, so the next request tries again. An unknown widget ID returns `404` with a JSON list of available widgets.
+
 The image cache key is composed of:
 
 ```text
-widgetId|size|format|theme|locale|tz
+widgetId|<width>x<height>|format|theme|locale|tz
 ```
 
 ### Key files
@@ -772,7 +788,7 @@ Available only when `server.debug: true`. Returns a health check and basic cache
 
 Available only when `server.debug: true`. Returns JSON with information useful when debugging a widget:
 
-- input props,
+- input props, including the data returned by `fetchData`,
 - parsed `RenderRequest`,
 - `cacheTtl`,
 - information about the resulting element.
@@ -785,7 +801,13 @@ Cache bypass is available only when `server.debug: true`. In production mode (`d
 
 ### Authentication
 
-If `server.authToken` is set, all requests must include the HTTP header:
+If `server.authToken` is set, all requests must include the token, either as a URL parameter (use this for BraiinsDeck, which cannot send custom headers):
+
+```text
+http://192.168.1.50:3000/widget/date.png?size=m&token=your-token
+```
+
+or as an HTTP header:
 
 ```text
 Authorization: Bearer your-token
@@ -797,6 +819,8 @@ Typical setup via environment variable:
 server:
   authToken: "${WIDGET_AUTH_TOKEN}"
 ```
+
+If `authToken` is present in the config but resolves to an empty value (e.g. the environment variable is not set), the server refuses to start. To disable authentication, comment out `authToken`. The token is masked (`token=***`) in request logs.
 
 ---
 
@@ -811,11 +835,15 @@ The server uses two separate cache layers.
 
 The image cache stores the finished image. The data cache stores the result of external data fetching, for example from CoinGecko or Home Assistant.
 
-Image cache key:
+Cache keys:
 
 ```text
-widgetId|size|format|theme|locale|tz
+widgetId|<width>x<height>|format|theme|locale|tz     # image cache
+data:widgetId:locale|tz:<widget config JSON>         # data cache
 ```
+
+- Errors are never cached – a failed render or `fetchData` is retried on the next request.
+- The image cache holds at most 500 entries and the data cache 200. If a cache is ever full, the image is still rendered and returned, it just is not cached.
 
 The cache can be bypassed for a single request with the parameter:
 
@@ -870,7 +898,13 @@ Check that:
 - `config.yaml` exists in the project root,
 - it is valid YAML,
 - it contains the `server`, `defaults`, and `widgets` sections,
-- the indentation in YAML matches the structure of objects and arrays.
+- the indentation in YAML matches the structure of objects and arrays,
+- `config.local.yaml`, if it exists, is valid YAML too,
+- if the message says `server.authToken is configured but empty`, the environment variable for the token (e.g. `WIDGET_AUTH_TOKEN`) is set – or comment out `authToken` to disable authentication.
+
+### Widget fails to load with "Unknown widget type '...'"
+
+The `type` in the config does not match any built-in widget, usually a typo. The message lists the available types.
 
 ### Widget fails to load with "Widget '...' must export a Widget with a component function"
 
@@ -917,7 +951,9 @@ Depending on the widget type, check:
 
 - for weather: `OPENWEATHER_API_KEY` value and city name,
 - for Home Assistant: `HA_HOST` and `HA_TOKEN` values,
-- for crypto: CoinGecko rate limit.
+- for crypto: CoinGecko rate limit and the coin symbol.
+
+The reason is written in the error image, for example `OpenWeatherMap API error: 401 Unauthorized`.
 
 If an API frequently returns an error or rate limit, increase `cacheTtl`.
 
@@ -961,6 +997,8 @@ braiins-deck-image-widget-server/
 ├── .env.example                 # environment variables template
 ├── README.md                    # English documentation
 ├── README.CS.md                 # Czech documentation
+├── scripts/
+│   └── clean-dist.mjs           # removes stale files from dist/ before build
 │
 ├── src/
 │   ├── server.ts                # Fastify bootstrap

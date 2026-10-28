@@ -78,7 +78,7 @@ const langData = {
       will24: "Budou ",
       will50: "Bude ",
 
-      // English-like keys are kept for compatibility but not used in Czech:
+      // Fixed forms for quarter/half/three-quarter phrases (no agreement with the hour):
       is: "Je ",
       was: "Bylo ",
       will: "Bude ",
@@ -198,8 +198,11 @@ function getFuzzyTime(locale: string, tz: string): string {
 
   let text = "";
 
+  // Full hours: Czech verb agrees with the hour count (Je jedna / Jsou dvě / Je pět hodin)
   const verb = (v: CzechVerb, hourForVerb: number) =>
     isCzech ? getCzechVerb(v, hourForVerb) : lang.phrases[v];
+  // Quarter/half/three-quarter: fixed form (Je / Bylo / Bude čtvrt na tři)
+  const fractionVerb = (v: CzechVerb) => lang.phrases[v];
 
   // LOGIKA ZAOKROUHLOVÁNÍ
   if (m >= 58 || m <= 2) {
@@ -215,47 +218,47 @@ function getFuzzyTime(locale: string, tz: string): string {
       (isCzech ? getCzechSuffix(currH) : lang.phrases.oclock);
   } else if (m <= 12) {
     text =
-      verb("will", nextH) +
+      fractionVerb("will") +
       lang.phrases.quarter +
       (isCzech ? lang.hours.acc[nextH] : lang.hours.nom[currH]);
   } else if (m <= 17) {
     text =
-      verb("is", nextH) +
+      fractionVerb("is") +
       lang.phrases.quarter +
       (isCzech ? lang.hours.acc[nextH] : lang.hours.nom[currH]);
   } else if (m <= 22) {
     text =
-      verb("was", nextH) +
+      fractionVerb("was") +
       lang.phrases.quarter +
       (isCzech ? lang.hours.acc[nextH] : lang.hours.nom[currH]);
   } else if (m <= 27) {
     text =
-      verb("will", nextH) +
+      fractionVerb("will") +
       lang.phrases.half +
       (isCzech ? lang.hours.gen[nextH] : lang.hours.nom[currH]);
   } else if (m <= 32) {
     text =
-      verb("is", nextH) +
+      fractionVerb("is") +
       lang.phrases.half +
       (isCzech ? lang.hours.gen[nextH] : lang.hours.nom[currH]);
   } else if (m <= 37) {
     text =
-      verb("was", nextH) +
+      fractionVerb("was") +
       lang.phrases.half +
       (isCzech ? lang.hours.gen[nextH] : lang.hours.nom[currH]);
   } else if (m <= 42) {
     text =
-      verb("will", nextH) +
+      fractionVerb("will") +
       lang.phrases.threeQuarter +
       (isCzech ? lang.hours.acc[nextH] : lang.hours.acc[nextH]);
   } else if (m <= 47) {
     text =
-      verb("is", nextH) +
+      fractionVerb("is") +
       lang.phrases.threeQuarter +
       (isCzech ? lang.hours.acc[nextH] : lang.hours.acc[nextH]);
   } else if (m <= 52) {
     text =
-      verb("was", nextH) +
+      fractionVerb("was") +
       lang.phrases.threeQuarter +
       (isCzech ? lang.hours.acc[nextH] : lang.hours.acc[nextH]);
   } else {

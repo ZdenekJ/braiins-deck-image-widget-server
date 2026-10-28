@@ -14,7 +14,7 @@ Widget bude automaticky dostupný s ID `my-widget` bez nutnosti konfigurace v `c
 
 ## Jak vytvořit widget
 
-Viz [examples/custom-widget.tsx](../examples/custom-widget.tsx) pro kompletní příklad.
+Podrobný návod je v [README.CS.md](../README.CS.md#vlastní-widget), funkční příklad v [example.tsx](./example.tsx).
 
 Základní struktura:
 
@@ -49,7 +49,8 @@ export default {
 1. **Responsive design** - používejte `width` a `height` pro výpočet velikostí fontů
 2. **Theme support** - podporujte `dark` i `light` theme
 3. **Cache TTL** - nastavte vhodnou `cacheTtl` hodnotu podle frekvence změn dat
-4. **Error handling** - všechny async operace obalte try/catch s fallback daty
+4. **Error handling** - data z externích API načítejte ve `fetchData`; při chybě vyhoďte výjimku (`throw`). Server zobrazí chybový obrázek s důvodem, nic neuloží do cache a další request to zkusí znovu.
+5. **Importy** - pomocné funkce serveru importujte z `../src/*.js` (např. `getThemeColors`); funguje to v `npm run dev` i `npm start`.
 
 ## Příklad widgetu
 

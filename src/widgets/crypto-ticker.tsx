@@ -1,6 +1,6 @@
 import type { Widget, WidgetProps, DeckSize } from "../types.js";
 import { getDeckSize } from "../types.js";
-import { getThemeColors, getMockDataWarningStyle } from "../styles/common.js";
+import { getThemeColors } from "../styles/common.js";
 
 interface CryptoConfig {
   coin: string; // BTC, ETH, etc.
@@ -19,7 +19,6 @@ interface CryptoData {
   volume?: number;
   symbol: string;
   lastUpdated?: number; // Unix timestamp
-  isMockData?: boolean; // Flag indicating if this is mock/fallback data
 }
 
 // ============================================================================
@@ -42,7 +41,6 @@ function getContainerStyle(theme: string): CSSProperties {
     boxSizing: "border-box",
     padding: "20px",
     gap: "8px",
-    position: "relative", // For absolute positioning of warning banner
   };
 }
 
@@ -193,18 +191,6 @@ function getLastUpdatedStyle(size: DeckSize, theme: string): CSSProperties {
 // DATA FETCHING
 // ============================================================================
 
-// Mock crypto data for fallback
-const MOCK_CRYPTO: CryptoData = {
-  price: 42500,
-  change1h: -0.5,
-  change24h: 2.5,
-  change7d: 8.3,
-  volume: 28000000000,
-  symbol: "BTC",
-  lastUpdated: Date.now(),
-  isMockData: true,
-};
-
 // Map common coin symbols to CoinGecko IDs
 function getCoinGeckoId(coin: string): string {
   const coinLower = coin.toLowerCase();
@@ -218,64 +204,52 @@ function getCoinGeckoId(coin: string): string {
     doge: "dogecoin",
     sol: "solana",
     dot: "polkadot",
-    matic: "polygon",
+    matic: "matic-network",
+    pol: "polygon-ecosystem-token",
   };
 
   return mapping[coinLower] || coinLower;
 }
 
-// Fetch crypto data from CoinGecko API
+// Fetch crypto data from CoinGecko API.
+// Failures throw, so nothing gets cached and the server shows an error image;
+// the next request retries.
 async function fetchCryptoData(config: CryptoConfig): Promise<CryptoData> {
   const { coin = "bitcoin", fiat = "usd" } = config;
 
-  try {
-    const coinId = getCoinGeckoId(coin);
-    const fiatLower = fiat.toLowerCase();
+  const coinId = getCoinGeckoId(coin);
+  const fiatLower = fiat.toLowerCase();
 
-    // Use /coins/markets endpoint to get 1h, 24h, 7d changes
-    const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=${fiatLower}&ids=${coinId}&price_change_percentage=1h,24h,7d`;
+  // Use /coins/markets endpoint to get 1h, 24h, 7d changes
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=${encodeURIComponent(fiatLower)}&ids=${encodeURIComponent(coinId)}&price_change_percentage=1h,24h,7d`;
 
-    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+  const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
 
-    if (!response.ok) {
-      console.error(
-        `CoinGecko API error: ${response.status} ${response.statusText}`,
-      );
-      console.warn(
-        "⚠️  Using mock crypto data - check CoinGecko API status and rate limits",
-      );
-      return MOCK_CRYPTO;
-    }
-
-    const data = (await response.json()) as any[];
-
-    if (!data || data.length === 0) {
-      console.error(`No data for coin: ${coinId}`);
-      console.warn(
-        "⚠️  Using mock crypto data - check coin symbol configuration",
-      );
-      return MOCK_CRYPTO;
-    }
-
-    const coinData = data[0];
-
-    return {
-      price: coinData.current_price || 0,
-      change1h: coinData.price_change_percentage_1h_in_currency,
-      change24h: coinData.price_change_percentage_24h || 0,
-      change7d: coinData.price_change_percentage_7d_in_currency,
-      volume: coinData.total_volume,
-      symbol: coin.toUpperCase(),
-      lastUpdated: coinData.last_updated
-        ? new Date(coinData.last_updated).getTime()
-        : Date.now(),
-      isMockData: false, // Successfully fetched real data
-    };
-  } catch (error) {
-    console.error("Failed to fetch crypto data:", error);
-    console.warn("⚠️  Using mock crypto data - check network connection");
-    return MOCK_CRYPTO;
+  if (!response.ok) {
+    throw new Error(
+      `CoinGecko API error: ${response.status} ${response.statusText}`,
+    );
   }
+
+  const data = (await response.json()) as any[];
+
+  if (!Array.isArray(data) || data.length === 0) {
+    throw new Error(`CoinGecko: unknown coin '${coin}' (id '${coinId}')`);
+  }
+
+  const coinData = data[0];
+
+  return {
+    price: coinData.current_price || 0,
+    change1h: coinData.price_change_percentage_1h_in_currency,
+    change24h: coinData.price_change_percentage_24h || 0,
+    change7d: coinData.price_change_percentage_7d_in_currency,
+    volume: coinData.total_volume,
+    symbol: coin.toUpperCase(),
+    lastUpdated: coinData.last_updated
+      ? new Date(coinData.last_updated).getTime()
+      : Date.now(),
+  };
 }
 
 // ============================================================================
@@ -366,8 +340,11 @@ async function CryptoTickerWidget(props: WidgetProps<CryptoConfig, CryptoData>) 
   const { width, height, config, data, theme, locale, tz } = props;
   const { fiat = "USD", showVolume = false, showChange = "24h" } = config;
 
-  // Use pre-fetched data from fetchData; fall back to mock if unavailable
-  const crypto = data ?? MOCK_CRYPTO;
+  // Pre-fetched by fetchData
+  if (!data) {
+    throw new Error("Crypto data not available");
+  }
+  const crypto = data;
 
   // Determine deck size
   const size = getDeckSize(width, height);
@@ -381,21 +358,9 @@ async function CryptoTickerWidget(props: WidgetProps<CryptoConfig, CryptoData>) 
   const changeLabelStyle = getChangeLabelStyle(size, theme);
   const volumeStyle = getVolumeStyle(size, theme);
   const lastUpdatedStyle = getLastUpdatedStyle(size, theme);
-  const warningStyle = getMockDataWarningStyle(size, theme as "dark" | "light");
 
   // Build children array
   const children: any[] = [];
-
-  // Add warning banner if using mock data
-  if (crypto.isMockData) {
-    children.push({
-      type: "div",
-      props: {
-        style: warningStyle,
-        children: "⚠️ MOCK DATA - Check API Configuration",
-      },
-    });
-  }
 
   // Add symbol
   children.push({

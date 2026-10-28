@@ -70,7 +70,7 @@ export interface WidgetProps<TConfig = any> {
 export interface Widget<TConfig = any> {
   component: (props: WidgetProps<TConfig>) => Promise<ReactElement | string>;
   cacheTtl?: number;
-  fetchData?: (config: TConfig) => Promise<any>;
+  fetchData?: (config: TConfig, context: { locale: string; tz: string }) => Promise<any>;
 }
 ```
 
@@ -110,7 +110,7 @@ http://localhost:3000/widget/my_custom.png?size=fs&refresh=1
 server:
   port: 3000
   host: 0.0.0.0
-  authToken: "${WIDGET_TOKEN}" # optional
+  authToken: "${WIDGET_AUTH_TOKEN}" # optional
 
 defaults:
   locale: cs-CZ

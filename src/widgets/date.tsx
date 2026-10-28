@@ -15,11 +15,19 @@ type CSSProperties = Record<string, string | number>;
 // DATE FORMATTING FUNCTIONS
 // ============================================================================
 
-function getWeekNumber(date: Date): number {
+function getWeekNumber(date: Date, tz: string): number {
+  // Calendar date in the target timezone (not the server's)
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(date);
+  const part = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value);
+
   // ISO 8601 week number calculation
-  const d = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
-  );
+  const d = new Date(Date.UTC(part("year"), part("month") - 1, part("day")));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
@@ -176,7 +184,7 @@ async function DateWidget(props: WidgetProps<DateConfig>) {
     ? getWeekdayText(tz, effectiveLocale, weekday)
     : null;
   const weekNumberText = showWeekNumber
-    ? getWeekNumberText(effectiveLocale, getWeekNumber(new Date()))
+    ? getWeekNumberText(effectiveLocale, getWeekNumber(new Date(), tz))
     : null;
 
   // Get styles for this size
@@ -231,5 +239,5 @@ async function DateWidget(props: WidgetProps<DateConfig>) {
 
 export default {
   component: DateWidget,
-  cacheTtl: 3600, // Cache for 1 hour (date changes once per day, but refresh hourly for safety)
+  cacheTtl: 60, // Short TTL so the date flips at most a minute after midnight
 } as Widget;

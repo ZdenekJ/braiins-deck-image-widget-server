@@ -4,11 +4,16 @@ import type { RenderRequest } from "./types.js";
 const imageCache = new NodeCache({ stdTTL: 60, checkperiod: 120, maxKeys: 500 });
 const dataCache  = new NodeCache({ stdTTL: 60, checkperiod: 120, maxKeys: 200 });
 
+// Caching is best-effort: a failed set (e.g. ECACHEFULL when maxKeys is reached) must not break rendering
 function cacheSet<T>(cache: NodeCache, key: string, value: T, ttl?: number): void {
-  if (ttl !== undefined) {
-    cache.set(key, value, ttl);
-  } else {
-    cache.set(key, value);
+  try {
+    if (ttl !== undefined) {
+      cache.set(key, value, ttl);
+    } else {
+      cache.set(key, value);
+    }
+  } catch (error) {
+    console.warn(`Cache set failed for '${key}':`, error instanceof Error ? error.message : error);
   }
 }
 
@@ -18,12 +23,16 @@ function extractStats(stats: NodeCache.Stats) {
 }
 
 export function generateCacheKey(req: RenderRequest): string {
-  return `${req.widgetId}|${req.size}|${req.format}|${req.theme}|${req.locale}|${req.tz}`;
+  return `${req.widgetId}|${req.width}x${req.height}|${req.format}|${req.theme}|${req.locale}|${req.tz}`;
 }
 
-export function generateDataCacheKey(widgetId: string, config: any): string {
+export function generateDataCacheKey(
+  widgetId: string,
+  config: any,
+  context: { locale: string; tz: string }
+): string {
   const configStr = JSON.stringify(config || {});
-  return `data:${widgetId}:${configStr}`;
+  return `data:${widgetId}:${context.locale}|${context.tz}:${configStr}`;
 }
 
 export function getCachedImage(key: string): Buffer | undefined {

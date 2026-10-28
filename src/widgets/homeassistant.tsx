@@ -201,7 +201,7 @@ async function fetchEntityState(
   token: string,
 ): Promise<EntityState> {
   try {
-    const url = `${host}/api/states/${entityId}`;
+    const url = `${host}/api/states/${encodeURIComponent(entityId)}`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -376,6 +376,11 @@ export default {
   component: HomeAssistantWidget,
   cacheTtl: 30, // Cache for 30 seconds (HA data changes frequently)
   fetchData: async (config: HomeAssistantConfig): Promise<EntityState[]> => {
+    if (!Array.isArray(config.entities) || config.entities.length === 0) {
+      throw new Error(
+        "homeassistant: config.entities must be a non-empty list of entity IDs",
+      );
+    }
     const host = config.host || process.env.HA_HOST || "http://homeassistant.local:8123";
     const token = config.token || process.env.HA_TOKEN || "";
     if (!token) {

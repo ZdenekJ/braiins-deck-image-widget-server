@@ -94,7 +94,7 @@ V tomto režimu se server automaticky restartuje při změnách v kódu.
 Pro běžné spuštění:
 
 ```bash
-npm run build
+npm run build   # smaže staré soubory z dist/ a zkompiluje TypeScript
 npm start
 ```
 
@@ -222,6 +222,9 @@ GET /widget/{widgetId}.{format}?size=...&theme=...&locale=...&tz=...
 | `refresh`           | `1` obejde cache pro jeden request                     | –                   |
 | `deck_image_width`  | Vlastní šířka v px – BraiinsDeck ji posílá automaticky | –                   |
 | `deck_image_height` | Vlastní výška v px – BraiinsDeck ji posílá automaticky | –                   |
+| `token`             | Přístupový token, jen pokud je nastavený `server.authToken` | –              |
+
+Neplatné `theme`, `locale` nebo `tz` se nahradí hodnotou z `defaults`. `deck_image_width` a `deck_image_height` se použijí jen společně; pokud jeden chybí, ignorují se oba a platí `size`.
 
 ### Příklady
 
@@ -245,7 +248,7 @@ BraiinsDeck používá čtyři standardní velikosti. Server pro ně vrací tyto
 | `l`  | 638 × 480   | Large – dvě políčka na výšku i šířku |
 | `fs` | 1280 × 480  | Fullscreen                           |
 
-Server akceptuje také parametry `deck_image_width` a `deck_image_height`. BraiinsDeck je posílá automaticky. Pro účely cache se vlastní rozměr přiřadí k nejbližší standardní velikosti.
+Server akceptuje také parametry `deck_image_width` a `deck_image_height`. BraiinsDeck je posílá automaticky. Widgety podle nejbližší standardní velikosti volí rozvržení; cache ukládá každý přesný rozměr zvlášť.
 
 ---
 
@@ -290,7 +293,7 @@ Datum, volitelně den v týdnu a číslo týdne.
 
 ### Weather (`type: weather`)
 
-Aktuální počasí z OpenWeatherMap. Bez `apiKey` widget vykreslí ukázková data a upozorní, že nejde o reálný výsledek.
+Aktuální počasí z OpenWeatherMap. Bez `apiKey` widget vykreslí ukázková data a upozorní, že nejde o reálný výsledek. S `apiKey` se při neúspěšném požadavku (špatný klíč, neznámé město, výpadek sítě) zobrazí chybový obrázek s důvodem; nic se neuloží do cache a další request to zkusí znovu.
 
 ```yaml
 - id: weather-zdar
@@ -310,13 +313,13 @@ API klíč lze získat na [openweathermap.org](https://openweathermap.org/api). 
 
 ### Crypto ticker (`type: crypto-ticker`)
 
-Aktuální cena kryptoměny z CoinGecko. API klíč není potřeba.
+Aktuální cena kryptoměny z CoinGecko. API klíč není potřeba. Pokud CoinGecko selže (např. rate limit, neznámý coin), zobrazí se chybový obrázek s důvodem; nic se neuloží do cache a další request to zkusí znovu. Coiny, které nejsou v seznamu níže, lze zadat jejich CoinGecko ID (např. `chainlink`).
 
 ```yaml
 - id: btc-price
   type: crypto-ticker
   config:
-    coin: BTC # BTC, ETH, USDT, BNB, XRP, ADA, DOGE, SOL, DOT, MATIC
+    coin: BTC # BTC, ETH, USDT, BNB, XRP, ADA, DOGE, SOL, DOT, MATIC, POL
     fiat: USD # USD, EUR, CZK, …
     showVolume: true # zobrazí objem
     showChange: all # 1h | 24h | 7d | all  (výchozí 24h)
@@ -333,7 +336,7 @@ Widget zobrazí stav jedné nebo více entit z Home Assistanta.
   type: homeassistant
   config:
     title: "Teploměr balkon"
-    entities:
+    entities: # povinné, alespoň jedna entita
       - sensor.venkovni_teplota
       - sensor.venkovni_vlhkost
     # host: http://homeassistant.local:8123  # volitelně přepíše HA_HOST
@@ -366,7 +369,7 @@ server:
   port: 3000
   host: 0.0.0.0
   debug: false # true zapne /health, /debug/:widgetId a ?refresh=1
-  # authToken: "${WIDGET_AUTH_TOKEN}"   # volitelný Bearer token
+  # authToken: "${WIDGET_AUTH_TOKEN}"   # volitelný, ?token=... nebo Bearer hlavička
   fonts:
     - family: Inter
       file: fonts/Inter-Regular.ttf
@@ -464,6 +467,8 @@ widgets:
 
 Při startu server vypíše do konzole, jak byla konfigurace sloučena.
 
+Pokud `config.local.yaml` existuje, ale není validní YAML, server odmítne nastartovat a vypíše, kde je chyba. Nikdy se potichu neignoruje.
+
 ---
 
 ## Environment proměnné a `.env`
@@ -479,7 +484,7 @@ Vzor je v souboru:
 Příklad `.env`:
 
 ```env
-# Volitelný Bearer token pro přístup k API serveru
+# Volitelný přístupový token k serveru (viz Autentizace)
 WIDGET_AUTH_TOKEN=tajny-token
 
 # OpenWeatherMap
@@ -499,6 +504,8 @@ widgets:
     config:
       apiKey: "${OPENWEATHER_API_KEY}"
 ```
+
+Pokud odkazovaná proměnná není nastavená, dosadí se prázdný řetězec a server ji při startu vypíše jako varování.
 
 Soubor `.env` je v `.gitignore`, takže se běžně nedostane do repozitáře.
 
@@ -600,13 +607,13 @@ export default {
 
 ### 3. Načítání externích dat
 
-Pokud widget potřebuje data z externího API, může exportovat funkci `fetchData`. Server ji zavolá před renderováním a výsledek uloží do data cache.
+Pokud widget potřebuje data z externího API, může exportovat funkci `fetchData`. Server ji zavolá před renderováním a výsledek uloží do data cache. Druhý parametr obsahuje `locale` a `tz` z requestu. Když `fetchData` vyhodí chybu, nic se neuloží do cache a zobrazí se chybový obrázek; další request to zkusí znovu. `fetchData` a komponenta dohromady musí doběhnout do 10 s.
 
 ```ts
 export default {
   component: MyWidget,
   cacheTtl: 300,
-  fetchData: async (config) => {
+  fetchData: async (config, { locale, tz }) => {
     const res = await fetch(`https://api.example.com/${config.symbol}`);
     return res.json();
   },
@@ -637,6 +644,13 @@ widgets:
       title: "Ahoj"
       value: 42
 ```
+
+#### Importy ve vlastním widgetu
+
+Vlastní widget může importovat pomocné funkce serveru z `../src/*.js` (např. `h`, `getDeckSize`, `getThemeColors`) i vlastní pomocné soubory, např. `./lib/helpers.ts`.
+
+- `npm run dev` – soubor načte přímo tsx.
+- `npm start` – soubor při startu přeloží esbuild; importy z `../src/*.js` se přesměrují na zkompilovaný `dist/` a vlastní pomocné soubory widgetu se přibalí.
 
 ### 5. Testování
 
@@ -695,16 +709,18 @@ Každý request na widget projde renderovací pipeline:
 3. `RenderService` zkontroluje image cache.
 4. Pokud je v cache hotový obrázek, server ho vrátí rovnou a nastaví hlavičku `X-Cache: HIT`.
 5. Pokud obrázek v cache není, načte se widget přes `loader.ts`.
-6. Pokud widget obsahuje `fetchData(config)`, server zavolá tuto funkci a výsledek uloží do data cache.
+6. Pokud widget obsahuje `fetchData(config, { locale, tz })`, server zavolá tuto funkci a výsledek uloží do data cache. Souběžné requesty na stejná data sdílí jedno volání.
 7. Komponenta widgetu dostane `WidgetProps` a vrátí JSX-like objekt `{ type, props }`.
 8. `renderer.ts` předá výsledek do Satori, které vytvoří SVG.
 9. Sharp převede SVG na PNG nebo JPG.
 10. Hotový buffer se uloží do image cache a vrátí klientovi.
 
+Kroky 6 a 7 musí dohromady doběhnout do 10 sekund. Pokud cokoli selže (chyba ve `fetchData` nebo v komponentě, timeout, neplatné rozměry), server vrátí **chybový obrázek** s důvodem, v požadovaných rozměrech a formátu. Chyby se necachují, takže další request to zkusí znovu. Neznámé ID widgetu vrátí `404` s JSON seznamem dostupných widgetů.
+
 Klíč image cache je složený z hodnot:
 
 ```text
-widgetId|size|format|theme|locale|tz
+widgetId|<šířka>x<výška>|format|theme|locale|tz
 ```
 
 ### Důležité soubory
@@ -772,7 +788,7 @@ Dostupný pouze při `server.debug: true`. Vrátí healthcheck a základní stat
 
 Dostupný pouze při `server.debug: true`. Vrátí JSON s informacemi užitečnými při ladění widgetu:
 
-- vstupní props,
+- vstupní props včetně dat vrácených z `fetchData`,
 - parsovaný `RenderRequest`,
 - `cacheTtl`,
 - informace o výsledném elementu.
@@ -785,7 +801,13 @@ Obejití cache je dostupné pouze při `server.debug: true`. V produkčním rež
 
 ### Autentizace
 
-Pokud je nastavený `server.authToken`, všechny requesty musí obsahovat HTTP hlavičku:
+Pokud je nastavený `server.authToken`, všechny requesty musí obsahovat token, buď jako parametr v URL (to je cesta pro BraiinsDeck, který neumí posílat vlastní hlavičky):
+
+```text
+http://192.168.1.50:3000/widget/date.png?size=m&token=tvuj-token
+```
+
+nebo jako HTTP hlavičku:
 
 ```text
 Authorization: Bearer tvuj-token
@@ -797,6 +819,8 @@ Typické nastavení přes environment proměnnou:
 server:
   authToken: "${WIDGET_AUTH_TOKEN}"
 ```
+
+Pokud je `authToken` v configu uvedený, ale vyjde prázdný (např. není nastavená environment proměnná), server odmítne nastartovat. Autentizaci vypneš zakomentováním `authToken`. V logu requestů je token maskovaný (`token=***`).
 
 ---
 
@@ -811,11 +835,15 @@ Server používá dvě samostatné vrstvy cache.
 
 Image cache ukládá už hotový obrázek. Data cache ukládá výsledek externího načtení dat, například z CoinGecko nebo Home Assistanta.
 
-Klíč image cache:
+Klíče cache:
 
 ```text
-widgetId|size|format|theme|locale|tz
+widgetId|<šířka>x<výška>|format|theme|locale|tz     # image cache
+data:widgetId:locale|tz:<JSON konfigurace widgetu>   # data cache
 ```
+
+- Chyby se nikdy necachují – neúspěšný render nebo `fetchData` se při dalším requestu zkusí znovu.
+- Image cache pojme nejvýš 500 položek a data cache 200. Kdyby se cache někdy zaplnila, obrázek se i tak vykreslí a vrátí, jen se neuloží.
 
 Cache lze obejít pro jeden request parametrem:
 
@@ -870,7 +898,13 @@ Zkontroluj:
 - že `config.yaml` existuje v kořenové složce projektu,
 - že jde o validní YAML,
 - že obsahuje sekce `server`, `defaults` a `widgets`,
-- že odsazení v YAML odpovídá struktuře objektů a polí.
+- že odsazení v YAML odpovídá struktuře objektů a polí,
+- že i `config.local.yaml`, pokud existuje, je validní YAML,
+- pokud hláška zní `server.authToken is configured but empty`, že je nastavená environment proměnná s tokenem (např. `WIDGET_AUTH_TOKEN`) – nebo zakomentuj `authToken` a autentizaci tím vypneš.
+
+### Widget se nenačte a hlásí „Unknown widget type '...'“
+
+`type` v konfiguraci neodpovídá žádnému vestavěnému widgetu, obvykle jde o překlep. Hláška vypíše dostupné typy.
 
 ### Widget se nenačte a hlásí „Widget '...' must export a Widget with a component function“
 
@@ -917,7 +951,9 @@ Podle typu widgetu zkontroluj:
 
 - u počasí hodnotu `OPENWEATHER_API_KEY` a název města,
 - u Home Assistanta hodnoty `HA_HOST` a `HA_TOKEN`,
-- u kryptoměn rate limit CoinGecko.
+- u kryptoměn rate limit CoinGecko a symbol coinu.
+
+Důvod chyby je napsaný přímo v chybovém obrázku, například `OpenWeatherMap API error: 401 Unauthorized`.
 
 Pokud API často vrací chybu nebo rate limit, zvyš `cacheTtl`.
 
@@ -961,6 +997,8 @@ braiins-deck-image-widget-server/
 ├── .env.example                 # vzor environment proměnných
 ├── README.md                    # anglická dokumentace nebo hlavní README
 ├── README.CS.md                 # česká dokumentace
+├── scripts/
+│   └── clean-dist.mjs           # před buildem smaže staré soubory z dist/
 │
 ├── src/
 │   ├── server.ts                # Fastify bootstrap

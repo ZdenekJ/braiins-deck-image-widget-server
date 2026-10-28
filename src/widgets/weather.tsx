@@ -1,11 +1,10 @@
-import type { Widget, WidgetProps, DeckSize } from "../types.js";
+import type { Widget, WidgetProps, DeckSize, FetchContext } from "../types.js";
 import { getDeckSize } from "../types.js";
 import { getThemeColors, getMockDataWarningStyle } from "../styles/common.js";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { text } from "stream/consumers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -296,10 +295,12 @@ function getLabels(locale: string) {
   };
 }
 
-// Fetch weather data from OpenWeatherMap API
+// Fetch weather data from OpenWeatherMap API.
+// Without an API key, mock data is returned. With a key, failures throw, so nothing
+// gets cached and the server shows an error image; the next request retries.
 async function fetchWeatherData(
   config: WeatherConfig,
-  locale: string,
+  { locale }: FetchContext,
 ): Promise<WeatherData> {
   const { city, country, apiKey, units = "metric" } = config;
 
@@ -311,42 +312,31 @@ async function fetchWeatherData(
   let conditionCodeVal = 802;
   let isMockData = true; // Track if using mock data
 
-  // If API key provided, try to fetch real data
   if (apiKey) {
-    try {
-      // Build city query with optional country code
-      const cityQuery = country
-        ? `${encodeURIComponent(city)},${encodeURIComponent(country)}`
-        : encodeURIComponent(city);
+    // Build city query with optional country code
+    const cityQuery = country
+      ? `${encodeURIComponent(city)},${encodeURIComponent(country)}`
+      : encodeURIComponent(city);
 
-      const lang = getWeatherLang(locale);
-      const url = `https://api.openweathermap.org/data/2.5/weather?q=${cityQuery}&appid=${apiKey}&units=${units}&lang=${lang}`;
+    const lang = getWeatherLang(locale);
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${cityQuery}&appid=${apiKey}&units=${units}&lang=${lang}`;
 
-      const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
 
-      if (response.ok) {
-        const data = (await response.json()) as any;
-        temp = Math.round(data.main.temp);
-        condition = data.weather[0]?.description || "Unknown";
-        humidity = data.main.humidity;
-        wind = Math.round(data.wind.speed);
-        conditionCodeVal = data.weather[0]?.id || 800;
-        iconCode = data.weather[0]?.icon || "01d";
-        isMockData = false; // Successfully fetched real data
-      } else {
-        console.error(
-          `OpenWeatherMap API error: ${response.status} ${response.statusText}`,
-        );
-        console.warn(
-          "⚠️  Using mock weather data - check API key and city configuration",
-        );
-      }
-    } catch (error) {
-      console.error("Failed to fetch weather data:", error);
-      console.warn(
-        "⚠️  Using mock weather data - check network connection and API configuration",
+    if (!response.ok) {
+      throw new Error(
+        `OpenWeatherMap API error: ${response.status} ${response.statusText}`,
       );
     }
+
+    const data = (await response.json()) as any;
+    temp = Math.round(data.main.temp);
+    condition = data.weather[0]?.description || "Unknown";
+    humidity = data.main.humidity;
+    wind = Math.round(data.wind.speed);
+    conditionCodeVal = data.weather[0]?.id || 800;
+    iconCode = data.weather[0]?.icon || "01d";
+    isMockData = false;
   } else {
     console.warn(
       "⚠️  No OpenWeatherMap API key provided, using mock weather data",
@@ -372,18 +362,20 @@ async function fetchWeatherData(
 // MAIN WIDGET COMPONENT
 // ============================================================================
 
-async function WeatherWidget(props: WidgetProps<WeatherConfig>) {
-  const { width, height, config, theme, locale } = props;
+async function WeatherWidget(props: WidgetProps<WeatherConfig, WeatherData>) {
+  const { width, height, config, data: weather, theme, locale } = props;
   const { city, units = "metric" } = config;
+
+  // Pre-fetched by fetchData (includes icon data URI)
+  if (!weather) {
+    throw new Error("Weather data not available");
+  }
 
   // Determine deck size
   const size = getDeckSize(width, height);
 
   // Get localized labels
   const labels = getLabels(locale);
-
-  // Fetch weather data (includes icon data URI)
-  const weather = await fetchWeatherData(config, locale);
 
   // Unit symbols
   const tempUnit = units === "imperial" ? "°F" : "°C";
@@ -489,4 +481,5 @@ async function WeatherWidget(props: WidgetProps<WeatherConfig>) {
 export default {
   component: WeatherWidget,
   cacheTtl: 600, // 10 minutes cache
-} as Widget<WeatherConfig>;
+  fetchData: fetchWeatherData,
+} as Widget<WeatherConfig, WeatherData>;
