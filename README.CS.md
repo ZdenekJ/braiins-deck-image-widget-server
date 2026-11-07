@@ -159,13 +159,15 @@ Pokud server běží například na počítači s IP adresou:
 pak bude adresa widgetu pro BraiinsDeck vypadat takto:
 
 ```text
-http://192.168.1.50:3000/widget/fuzzy-clock.png
+http://192.168.1.50:3000/widget/fuzzy-clock.png?deck_image_width={{width}}&deck_image_height={{height}}
 ```
 
-A pro konkrétní widget s parametry například takto:
+BraiinsDeck za placeholdery `{{width}}` a `{{height}}` dosadí skutečné rozměry plochy, kterou má widget přidělenou, takže se obrázek vykreslí přesně pro jeho slot. Bez nich server velikost slotu nezná a vykreslí `defaults.size` (viz [Velikosti displeje](#velikosti-displeje)).
+
+Další parametry lze přidat, například:
 
 ```text
-http://192.168.1.50:3000/widget/btc-price.png?size=m&theme=dark
+http://192.168.1.50:3000/widget/btc-price.png?deck_image_width={{width}}&deck_image_height={{height}}&theme=dark
 ```
 
 IP adresu počítače zjistíš například takto:
@@ -220,11 +222,11 @@ GET /widget/{widgetId}.{format}?size=...&theme=...&locale=...&tz=...
 | `locale`            | Lokalizace, např. `cs-CZ`, `en-US`                     | z `defaults.locale` |
 | `tz`                | Časové pásmo, např. `Europe/Prague`                    | z `defaults.tz`     |
 | `refresh`           | `1` obejde cache pro jeden request                     | –                   |
-| `deck_image_width`  | Vlastní šířka v px – BraiinsDeck ji posílá automaticky | –                   |
-| `deck_image_height` | Vlastní výška v px – BraiinsDeck ji posílá automaticky | –                   |
+| `deck_image_width`  | Šířka v px, v BraiinsDecku zadej `{{width}}`           | –                   |
+| `deck_image_height` | Výška v px, v BraiinsDecku zadej `{{height}}`          | –                   |
 | `token`             | Přístupový token, jen pokud je nastavený `server.authToken` | –              |
 
-Neplatné `theme`, `locale` nebo `tz` se nahradí hodnotou z `defaults`. `deck_image_width` a `deck_image_height` se použijí jen společně; pokud jeden chybí, ignorují se oba a platí `size`.
+Neplatné `theme`, `locale` nebo `tz` se nahradí hodnotou z `defaults`. `deck_image_width` a `deck_image_height` se použijí jen společně; pokud jeden chybí, ignorují se oba a platí `size`. Pokud jsou zadané oba, mají přednost před `size`. Hodnota, která není číslo od 1 do 2560 (třeba překlep v placeholderu jako `{{wdth}}`, který BraiinsDeck pošle beze změny), vrátí chybový obrázek; na `size` se nepřechází.
 
 ### Příklady
 
@@ -248,7 +250,7 @@ BraiinsDeck používá čtyři standardní velikosti. Server pro ně vrací tyto
 | `l`  | 638 × 480   | Large – dvě políčka na výšku i šířku |
 | `fs` | 1280 × 480  | Fullscreen                           |
 
-Server akceptuje také parametry `deck_image_width` a `deck_image_height`. BraiinsDeck je posílá automaticky. Widgety podle nejbližší standardní velikosti volí rozvržení; cache ukládá každý přesný rozměr zvlášť.
+Server akceptuje také parametry `deck_image_width` a `deck_image_height`. BraiinsDeck je sám nepřidává: do URL widgetu dej `deck_image_width={{width}}&deck_image_height={{height}}` a BraiinsDeck doplní rozměry plochy widgetu. Widgety podle nejbližší standardní velikosti volí rozvržení; cache ukládá každý přesný rozměr zvlášť.
 
 ---
 
@@ -715,7 +717,7 @@ Každý request na widget projde renderovací pipeline:
 9. Sharp převede SVG na PNG nebo JPG.
 10. Hotový buffer se uloží do image cache a vrátí klientovi.
 
-Kroky 6 a 7 musí dohromady doběhnout do 10 sekund. Pokud cokoli selže (chyba ve `fetchData` nebo v komponentě, timeout, neplatné rozměry), server vrátí **chybový obrázek** s důvodem, v požadovaných rozměrech a formátu. Chyby se necachují, takže další request to zkusí znovu. Neznámé ID widgetu vrátí `404` s JSON seznamem dostupných widgetů.
+Kroky 6 a 7 musí dohromady doběhnout do 10 sekund. Pokud cokoli selže (chyba ve `fetchData` nebo v komponentě, timeout, neplatné rozměry), server vrátí **chybový obrázek** s důvodem, v požadovaných rozměrech a formátu. Pokud je neplatný samotný request (např. špatné rozměry), velikost slotu není známá a chybový obrázek se vykreslí ve velikosti `s` (317 × 238), která je čitelná v každém slotu. Chyby se necachují, takže další request to zkusí znovu. Neznámé ID widgetu vrátí `404` s JSON seznamem dostupných widgetů.
 
 Klíč image cache je složený z hodnot:
 

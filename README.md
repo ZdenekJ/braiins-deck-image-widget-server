@@ -159,13 +159,15 @@ If the server runs on a computer with IP address:
 then the widget address for BraiinsDeck will look like:
 
 ```text
-http://192.168.1.50:3000/widget/fuzzy-clock.png
+http://192.168.1.50:3000/widget/fuzzy-clock.png?deck_image_width={{width}}&deck_image_height={{height}}
 ```
 
-And for a specific widget with parameters, for example:
+BraiinsDeck replaces the `{{width}}` and `{{height}}` placeholders with the actual dimensions of the area assigned to the widget, so the image is rendered exactly for its slot. Without them the server cannot know the slot size and renders `defaults.size` (see [Display sizes](#display-sizes)).
+
+Other parameters can be added, for example:
 
 ```text
-http://192.168.1.50:3000/widget/btc-price.png?size=m&theme=dark
+http://192.168.1.50:3000/widget/btc-price.png?deck_image_width={{width}}&deck_image_height={{height}}&theme=dark
 ```
 
 Find your computer's IP address as follows:
@@ -220,11 +222,11 @@ GET /widget/{widgetId}.{format}?size=...&theme=...&locale=...&tz=...
 | `locale`            | Locale, e.g. `cs-CZ`, `en-US`                              | from `defaults.locale` |
 | `tz`                | Time zone, e.g. `Europe/Prague`                            | from `defaults.tz`     |
 | `refresh`           | `1` bypasses the cache for a single request                | –                      |
-| `deck_image_width`  | Custom width in px — BraiinsDeck sends this automatically  | –                      |
-| `deck_image_height` | Custom height in px — BraiinsDeck sends this automatically | –                      |
+| `deck_image_width`  | Width in px, in BraiinsDeck set it to `{{width}}`           | –                      |
+| `deck_image_height` | Height in px, in BraiinsDeck set it to `{{height}}`         | –                      |
 | `token`             | Access token, only when `server.authToken` is set          | –                      |
 
-An invalid `theme`, `locale` or `tz` falls back to the value from `defaults`. `deck_image_width` and `deck_image_height` are only used together; if one of them is missing, both are ignored and `size` applies.
+An invalid `theme`, `locale` or `tz` falls back to the value from `defaults`. `deck_image_width` and `deck_image_height` are only used together; if one of them is missing, both are ignored and `size` applies. When both are present, they take precedence over `size`. A value that is not a number between 1 and 2560 (e.g. a misspelled placeholder like `{{wdth}}`, which BraiinsDeck sends unchanged) returns an error image; it does not fall back to `size`.
 
 ### Examples
 
@@ -248,7 +250,7 @@ BraiinsDeck uses four standard sizes. The server returns these dimensions:
 | `l`  | 638 × 480       | Large – two slots tall and wide |
 | `fs` | 1280 × 480      | Fullscreen                      |
 
-The server also accepts `deck_image_width` and `deck_image_height` parameters. BraiinsDeck sends these automatically. Widgets pick their layout from the nearest standard size; the cache stores each exact dimension separately.
+The server also accepts `deck_image_width` and `deck_image_height` parameters. BraiinsDeck does not add them on its own: put `deck_image_width={{width}}&deck_image_height={{height}}` into the widget URL and BraiinsDeck fills in the dimensions of the widget's area. Widgets pick their layout from the nearest standard size; the cache stores each exact dimension separately.
 
 ---
 
@@ -715,7 +717,7 @@ Every widget request goes through the rendering pipeline:
 9. Sharp converts the SVG to PNG or JPG.
 10. The finished buffer is stored in the image cache and returned to the client.
 
-Steps 6 and 7 together must finish within 10 seconds. If anything fails (an error in `fetchData` or the component, a timeout, invalid dimensions), the server returns an **error image** with the reason, in the requested dimensions and format. Errors are not cached, so the next request tries again. An unknown widget ID returns `404` with a JSON list of available widgets.
+Steps 6 and 7 together must finish within 10 seconds. If anything fails (an error in `fetchData` or the component, a timeout, invalid dimensions), the server returns an **error image** with the reason, in the requested dimensions and format. If the request itself is invalid (e.g. bad dimensions), the slot size is unknown and the error image is rendered in size `s` (317 × 238), which stays readable in any slot. Errors are not cached, so the next request tries again. An unknown widget ID returns `404` with a JSON list of available widgets.
 
 The image cache key is composed of:
 

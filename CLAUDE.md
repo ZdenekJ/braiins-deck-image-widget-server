@@ -62,7 +62,7 @@ Defined in `src/types.ts` as `DECK_SIZES`:
 - `l`: 638×480
 - `fs`: 1280×480
 
-BraiinsDeck can also pass `?deck_image_width=N&deck_image_height=N` for custom dimensions (max 2560).
+Custom dimensions come via `?deck_image_width=N&deck_image_height=N` (max 2560, both required, they override `size`). BraiinsDeck does **not** add them automatically: the user must put `deck_image_width={{width}}&deck_image_height={{height}}` into the widget URL and BraiinsDeck substitutes the slot dimensions. An unknown placeholder (typo) is sent literally and yields an error image, not a fallback to `size`.
 
 ### JSX without React
 

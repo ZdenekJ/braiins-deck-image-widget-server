@@ -1,7 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { WidgetNotFoundError, type RenderService } from "../services/render.service.js";
 import { parseRenderRequest, normalizeFormat, DECK_SIZES } from "../types.js";
-import type { DeckSize, RenderRequest } from "../types.js";
+import type { RenderRequest } from "../types.js";
 import { getAllWidgetIds, getWidget, getWidgetInfo } from "../loader.js";
 import { getCacheStats, CacheStats } from "../cache.js";
 
@@ -108,9 +108,10 @@ export class WidgetController {
         }
 
         // Try to render error image in the requested dimensions and format
-        // (falls back to the default size if the request itself couldn't be parsed)
+        // (falls back to the smallest deck size if the request itself couldn't be parsed:
+        // the slot size is unknown and "s" is never scaled down, so it stays readable)
         try {
-            const fallbackSize = DECK_SIZES[this.config.defaults.size as DeckSize] ?? DECK_SIZES.m;
+            const fallbackSize = DECK_SIZES.s;
             const errorBuffer = await this.renderService.renderError(
                 error?.message || "Unknown error",
                 {
