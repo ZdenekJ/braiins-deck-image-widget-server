@@ -1,6 +1,6 @@
 {
   "name": "braiins-widget-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Widget server for BraiinsDeck devices - generates PNG/JPG images from HTML/CSS/JS on-demand",
   "type": "module",
   "main": "dist/server.js",
